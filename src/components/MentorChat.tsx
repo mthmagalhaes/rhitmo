@@ -181,6 +181,79 @@ export const MentorChat = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  // 1B — resposta ao vivo (streaming SSE)
+  const [streamingText, setStreamingText] = useState<string | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
+
+  /**
+   * Faz a chamada com `stream: true`. Retorna `{ response, metadata }` quando
+   * conclui (ou quando o líder clica em Parar, com o texto parcial).
+   * Lança erro se falhar antes do primeiro token — o chamador cai no fluxo JSON.
+   */
+  const streamMentorResponse = async (fnName: string, token: string | undefined, body: Record<string, unknown>) => {
+    const ctrl = new AbortController();
+    streamAbortRef.current = ctrl;
+    const firstTokenTimer = setTimeout(() => ctrl.abort(), 45000);
+    let full = '';
+    let gotToken = false;
+    try {
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fnName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...body, stream: true }),
+        signal: ctrl.signal,
+      });
+      if (!resp.ok || !resp.body || !(resp.headers.get('content-type') || '').includes('text/event-stream')) {
+        throw new Error(`stream_unavailable_${resp.status}`);
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalText: string | null = null;
+      let metadata: any = null;
+      while (true) {
+        let chunk: ReadableStreamReadResult<Uint8Array>;
+        try { chunk = await reader.read(); } catch (e) {
+          if (gotToken) break; // Parar / queda após começar: mantém o parcial
+          throw e;
+        }
+        if (chunk.done) break;
+        buffer += decoder.decode(chunk.value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          const line = buffer.slice(0, idx).replace(/\r$/, '');
+          buffer = buffer.slice(idx + 1);
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') continue;
+          try {
+            const j = JSON.parse(payload);
+            if (typeof j.rhitmo_final === 'string') { finalText = j.rhitmo_final; metadata = j.metadata; continue; }
+            const d = j?.choices?.[0]?.delta?.content;
+            if (typeof d === 'string' && d) {
+              if (!gotToken) { gotToken = true; clearTimeout(firstTokenTimer); setLoadingMessage(''); }
+              full += d;
+              setStreamingText(full);
+            }
+          } catch { /* linha parcial */ }
+        }
+      }
+      const response = (finalText ?? full).trim();
+      if (!response) throw new Error('stream_empty');
+      return { response, metadata: metadata ?? {} };
+    } catch (e) {
+      if (gotToken && full.trim()) return { response: full.trim(), metadata: {} };
+      throw e;
+    } finally {
+      clearTimeout(firstTokenTimer);
+      streamAbortRef.current = null;
+    }
+  };
+
+  const stopStreaming = () => streamAbortRef.current?.abort();
+
+  /** Esconde citação `[doc:...` incompleta no fim do texto parcial. */
+  const visibleStreamingText = (t: string) => t.replace(/\[(?:d(?:o(?:c(?::[0-9a-fA-F-]*)?)?)?)?$/, '');
   const [loadingSeconds, setLoadingSeconds] = useState(0);
   const [lastSummaryApplied, setLastSummaryApplied] = useState(false);
   const [isExtractingFile, setIsExtractingFile] = useState(false);
@@ -538,7 +611,6 @@ export const MentorChat = ({
 
         // 1B — tentativa com streaming. Se falhar antes do primeiro token,
         // cai no fluxo JSON atual (com retries) logo abaixo.
-        clearTimeout(timeoutId);
         try {
           data = await streamMentorResponse(edgeFunctionName, session?.session?.access_token, requestBody);
         } catch (e) {
@@ -681,7 +753,7 @@ export const MentorChat = ({
         errorMessage = error.message;
       }
       toast({ title: isLeader ? "Erro ao consultar mentor" : "Erro no Meu Rhitmo", description: errorMessage, variant: "destructive", duration: 7000 });
-    } finally { setIsLoading(false); setLoadingMessage(''); if (loadingInterval) clearInterval(loadingInterval); }
+    } finally { setIsLoading(false); setStreamingText(null); setLoadingMessage(''); if (loadingInterval) clearInterval(loadingInterval); }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
