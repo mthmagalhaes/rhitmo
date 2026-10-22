@@ -16,6 +16,7 @@ const Body = z.object({
   action: z.enum(["init", "suggest", "suggest_all", "assemble", "signals_init", "signals_suggest"]),
   reviewId: z.string().uuid(),
   itemId: z.string().uuid().optional(),
+  stream: z.boolean().optional(),
 });
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -137,14 +138,67 @@ Deno.serve(async (req) => {
       const { data: sigCards } = await admin.from("review_signal_items").select("kind, title, suggested_text, final_text, status").eq("review_id", reviewId).in("status", ["accepted", "edited"]).order("position");
       const signalsBlock = buildSignalsBlock(sigCards ?? []);
       const userPrompt = `VALORES REVISADOS PELO LÍDER:\n${valuesText}\n\nEVIDÊNCIAS DO PERÍODO (${evidence.count}):\n${evidence.text || "Nenhuma evidência registrada."}${lowEvidence}${signalsBlock}`;
-      const ai = await callAI({
-        model: "google/gemini-2.5-flash",
-        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      });
-      let md: string = (ai?.choices?.[0]?.message?.content ?? "").trim().replace(/^```(?:markdown)?\s*/i, "").replace(/```\s*$/, "").trim();
-      md = normalizeReviewHeadings(md);
+      const messages = [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }];
+      const finalize = async (raw: string) => {
+        let md = raw.trim().replace(/^```(?:markdown)?\s*/i, "").replace(/```\s*$/, "").trim();
+        md = normalizeReviewHeadings(md);
+        if (md) await admin.from("performance_reviews").update({ content: md, updated_at: new Date().toISOString() }).eq("id", reviewId);
+        return md;
+      };
+
+      if (stream) {
+        const key = Deno.env.get("LOVABLE_API_KEY");
+        if (!key) throw new Error("LOVABLE_API_KEY não configurada");
+        const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "google/gemini-2.5-flash", messages, stream: true }),
+        });
+        if (upstream.status === 429) return json({ error: "Limite de requisições excedido. Tente novamente em instantes." }, 429);
+        if (upstream.status === 402) return json({ error: "Créditos de IA esgotados." }, 402);
+        if (!upstream.ok || !upstream.body) return json({ error: `Falha na IA (${upstream.status})` }, 502);
+
+        const enc = new TextEncoder();
+        const dec = new TextDecoder();
+        const body = new ReadableStream({
+          async start(controller) {
+            const send = (o: unknown) => controller.enqueue(enc.encode(`data: ${JSON.stringify(o)}\n\n`));
+            let full = "", buf = "";
+            try {
+              const reader = upstream.body!.getReader();
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buf += dec.decode(value, { stream: true });
+                let nl: number;
+                while ((nl = buf.indexOf("\n")) >= 0) {
+                  const line = buf.slice(0, nl).replace(/\r$/, "");
+                  buf = buf.slice(nl + 1);
+                  if (!line.startsWith("data: ")) continue;
+                  const payload = line.slice(6).trim();
+                  if (payload === "[DONE]") continue;
+                  try {
+                    const delta = JSON.parse(payload)?.choices?.[0]?.delta?.content;
+                    if (delta) { full += delta; send({ type: "delta", text: delta }); }
+                  } catch { buf = line + "\n" + buf; break; }
+                }
+              }
+              const md = await finalize(full);
+              if (!md) send({ type: "error", error: "A Rhitmo não conseguiu montar o documento. Tente novamente." });
+              else send({ type: "done", content: md });
+            } catch (e) {
+              send({ type: "error", error: (e as Error).message });
+            } finally {
+              controller.close();
+            }
+          },
+        });
+        return new Response(body, { headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" } });
+      }
+
+      const ai = await callAI({ model: "google/gemini-2.5-flash", messages });
+      const md = await finalize(ai?.choices?.[0]?.message?.content ?? "");
       if (!md) throw Object.assign(new Error("A Rhitmo não conseguiu montar o documento. Tente novamente."), { status: 502 });
-      await admin.from("performance_reviews").update({ content: md, updated_at: new Date().toISOString() }).eq("id", reviewId);
       return json({ content: md });
     }
 
