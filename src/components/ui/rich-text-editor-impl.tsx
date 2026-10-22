@@ -1,4 +1,5 @@
 import { useEditor, EditorContent } from '@tiptap/react';
+import { Node, mergeAttributes } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Highlight from '@tiptap/extension-highlight';
@@ -12,7 +13,28 @@ import { BiasUnderlineExtension, biasPluginKey } from '@/components/feedback/Bia
 import { BiasInlinePopover } from '@/components/feedback/BiasInlinePopover';
 import type { BiasMatch } from '@/lib/biasDetection';
 
+// Atomic inline node for `[doc:UUID]` citations (rendered as a pill, saved back as marker).
+const CitationNode = Node.create({
+  name: 'citation',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: true,
+  addAttributes() {
+    return { docId: { default: null, parseHTML: (el) => el.getAttribute('data-citation'), renderHTML: (a) => ({ 'data-citation': a.docId }) } };
+  },
+  parseHTML() { return [{ tag: 'span[data-citation]' }]; },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes, {
+      class: 'inline-flex items-center mx-0.5 rounded-full border border-primary/15 bg-primary/10 px-1.5 py-0.5 text-[10.5px] font-medium leading-none text-primary align-baseline select-none',
+      contenteditable: 'false',
+      title: 'Evidência citada',
+    }), 'evidência'];
+  },
+});
+
 export interface RichTextEditorProps {
+  appearance?: 'default' | 'reading';
   content: string;
   onChange: (html: string) => void;
   placeholder?: string;
@@ -32,7 +54,9 @@ export const RichTextEditor = ({
   editorRef,
   highlightWords,
   biasMatches,
+  appearance = 'default',
 }: RichTextEditorProps) => {
+  const reading = appearance === 'reading';
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editor = useEditor({
     extensions: [
@@ -41,6 +65,7 @@ export const RichTextEditor = ({
           levels: [1, 2, 3],
         },
       }),
+      CitationNode,
       Highlight.configure({ multicolor: true }),
       BiasUnderlineExtension,
       Placeholder.configure({
@@ -149,12 +174,13 @@ export const RichTextEditor = ({
 
   return (
     <div className={cn(
-      "rounded-lg border border-input bg-background ring-offset-background",
-      "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+      reading
+        ? "rounded-xl border border-primary/25 bg-card ring-1 ring-primary/10 focus-within:ring-primary/30"
+        : "rounded-lg border border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
       disabled && "opacity-50 cursor-not-allowed"
     )}>
       {/* Toolbar */}
-      <div className="flex items-center gap-1 p-2 border-b border-input bg-muted/30 rounded-t-lg">
+      <div className={cn("flex items-center gap-1 p-2 rounded-t-lg", reading ? "sticky top-0 z-10 border-b border-border/50 bg-card/95 backdrop-blur" : "border-b border-input bg-muted/30")}>
         <Toggle
           size="sm"
           pressed={editor.isActive('bold')}
@@ -221,7 +247,7 @@ export const RichTextEditor = ({
       <EditorContent 
         editor={editor} 
         className={cn(
-          "prose prose-sm max-w-none p-3 prose-p:mb-4 prose-p:leading-relaxed prose-headings:mb-3 prose-headings:mt-6",
+          reading ? "max-w-none" : "prose prose-sm max-w-none p-3 prose-p:mb-4 prose-p:leading-relaxed prose-headings:mb-3 prose-headings:mt-6",
           "[&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[inherit]",
           "[&_.ProseMirror.is-editor-empty]:before:content-[attr(data-placeholder)]",
           "[&_.ProseMirror.is-editor-empty]:before:text-muted-foreground",

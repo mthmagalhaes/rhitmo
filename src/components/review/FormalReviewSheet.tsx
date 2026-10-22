@@ -766,8 +766,9 @@ export function FormalReviewSheet({
                     </div>
                   </div>
                 ) : (
-                  <div className={`rounded-xl bg-card [&_.ProseMirror]:px-5 [&_.ProseMirror]:py-4 [&>div>div:first-child]:sticky [&>div>div:first-child]:top-0 [&>div>div:first-child]:z-10 ${READING_PROSE}`}>
+                  <div className={`[&_.ProseMirror]:px-5 sm:[&_.ProseMirror]:px-6 [&_.ProseMirror]:py-5 ${READING_PROSE}`}>
                     <RichTextEditor
+                      appearance="reading"
                       content={editorHtml}
                       onChange={(html) => {
                         setEditorHtml(html);
