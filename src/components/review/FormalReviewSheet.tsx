@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CultureGuidedPanel } from '@/components/review/CultureGuidedPanel';
 import { RhitmoThinking } from '@/components/ai/RhitmoThinking';
 import { ReviewMirrorPanel, type MirrorResult, type MirrorFinding } from '@/components/review/ReviewMirrorPanel';
-import { Compass, ScanSearch, Radio } from 'lucide-react';
+import { Compass, ScanSearch, Radio, Lock } from 'lucide-react';
 import { SignalsGuidedPanel } from '@/components/review/SignalsGuidedPanel';
 import { Button } from '@/components/ui/button';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
@@ -240,6 +240,23 @@ export function FormalReviewSheet({
 
   const isCultureGuided = (review as any)?.authoring_mode === 'culture_guided';
   const isPlaceholder = /^_(Preparando|Gerando)/.test((draftText || '').trim());
+  // Passos obrigatórios na primeira vez: 0 = só Cultura, 1 = + Sinais, 2 = tudo livre.
+  const stepKey = reviewId ? `guided-step-${reviewId}` : null;
+  const [guidedStep, setGuidedStep] = useState<number | null>(null);
+  useEffect(() => {
+    if (!review || !stepKey || guidedStep !== null) return;
+    const stored = Number(localStorage.getItem(stepKey) ?? NaN);
+    const content = String((review as any).content ?? '').trim();
+    const hasRealDraft = !!content && !/^_(Preparando|Gerando)/.test(content);
+    const opened = !isCultureGuided || !!review.shared_with_member || (hasRealDraft && !(stored >= 0 && stored < 2)) ? 2 : (stored >= 0 ? stored : 0);
+    if (opened < 2) localStorage.setItem(stepKey, String(opened));
+    setGuidedStep(opened);
+  }, [review, stepKey, guidedStep, isCultureGuided]);
+  const advanceStep = (n: number) => {
+    setGuidedStep((s) => Math.max(s ?? 0, n));
+    if (stepKey) localStorage.setItem(stepKey, String(n));
+  };
+  const step = guidedStep ?? 2;
   const openFindings = (mirrorResult?.findings ?? []).filter((f) => !f.dismissed).length;
 
   const invokeMirror = async (body: Record<string, unknown>) => {
@@ -508,17 +525,17 @@ export function FormalReviewSheet({
                 </TabsTrigger>
               )}
               {isCultureGuided && (
-                <TabsTrigger value="signals" className="gap-1.5">
-                  <Radio className="h-3.5 w-3.5" />
+                <TabsTrigger value="signals" className="gap-1.5" disabled={step < 1} title={step < 1 ? 'Conclua a Cultura primeiro' : undefined}>
+                  {step < 1 ? <Lock className="h-3.5 w-3.5" /> : <Radio className="h-3.5 w-3.5" />}
                   Sinais & Rede
                 </TabsTrigger>
               )}
-              <TabsTrigger value="draft" className="gap-1.5">
-                <FileText className="h-3.5 w-3.5" />
+              <TabsTrigger value="draft" className="gap-1.5" disabled={step < 2} title={step < 2 ? 'Conclua Cultura e Sinais primeiro' : undefined}>
+                {step < 2 ? <Lock className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
                 {t('review.tabs.draft', 'Rascunho Geral')}
               </TabsTrigger>
-              <TabsTrigger value="mirror" className="gap-1.5">
-                <ScanSearch className="h-3.5 w-3.5" />
+              <TabsTrigger value="mirror" className="gap-1.5" disabled={step < 2} title={step < 2 ? 'Disponível depois do Rascunho Geral' : undefined}>
+                {step < 2 ? <Lock className="h-3.5 w-3.5" /> : <ScanSearch className="h-3.5 w-3.5" />}
                 Espelho{openFindings > 0 ? ` (${openFindings})` : ''}
               </TabsTrigger>
             </TabsList>
@@ -537,7 +554,7 @@ export function FormalReviewSheet({
                       setDraftText(content);
                       await supabase.from('performance_reviews').update({ content }).eq('id', reviewId!);
                       queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
-                      if (advance) setActiveTab('signals');
+                      if (advance) { advanceStep(1); setActiveTab('signals'); }
                     }}
                   />
                 </div>
@@ -556,7 +573,7 @@ export function FormalReviewSheet({
                       setDraftText(content);
                       await supabase.from('performance_reviews').update({ content }).eq('id', reviewId!);
                       queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
-                      if (advance) setActiveTab('draft');
+                      if (advance) { advanceStep(2); setActiveTab('draft'); }
                     }}
                   />
                 </div>
