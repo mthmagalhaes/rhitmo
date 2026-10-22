@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import { citationMarkdownComponents } from '@/lib/markdownCitations';
 import { RhitmoThinking } from '@/components/ai/RhitmoThinking';
+import { prefetchSignals } from '@/components/review/SignalsGuidedPanel';
 
 interface CultureItem {
   id: string;
@@ -50,7 +51,7 @@ export function CultureGuidedPanel({
   versionId: string | null;
   readOnly: boolean;
   needsAssembly?: boolean;
-  onAssembled: (content: string, advance: boolean) => void | Promise<void>;
+  onAssembled: (content: string | null, advance: boolean) => void | Promise<void>;
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -109,17 +110,7 @@ export function CultureGuidedPanel({
     await onAssembled(data.content, advance);
   };
 
-  // Monta o Rascunho Geral sozinho assim que as sugestões ficam prontas.
-  const autoTried = useRef(false);
   const hasSuggestions = items.some((i) => i.suggested_text || i.final_text);
-  useEffect(() => {
-    if (readOnly || !needsAssembly || autoTried.current || isLoading) return;
-    if (items.length === 0 || pendingSuggestions > 0 || !hasSuggestions) return;
-    autoTried.current = true;
-    setBusy('assemble');
-    assemble(false).catch(() => { /* usuário pode montar pelo botão */ }).finally(() => setBusy(null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsAssembly, items.length, pendingSuggestions, hasSuggestions, isLoading, readOnly]);
 
   // Começa sozinho ao abrir uma avaliação nova: sem clique, já mostrando "trabalhando".
   const autoInit = useRef(false);
@@ -128,6 +119,8 @@ export function CultureGuidedPanel({
     autoInit.current = true;
     run('init', async () => {
       await invoke({ action: 'init', reviewId });
+      // Sinais começam em paralelo: ao avançar, os cartões já estão prontos.
+      prefetchSignals(reviewId).catch(() => { /* painel de Sinais permite buscar de novo */ });
       await invoke({ action: 'suggest_all', reviewId });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -197,8 +190,9 @@ export function CultureGuidedPanel({
 
       {!readOnly && (
         <div className="sticky bottom-0 bg-background/95 backdrop-blur py-3 flex justify-end">
-          <Button className="rounded-xl" disabled={busy === 'assemble' || pendingSuggestions > 0 || !hasSuggestions} onClick={() => run('assemble', async () => {
-            await assemble(true);
+          <Button className="rounded-xl" disabled={busy === 'assemble' || pendingSuggestions > 0 || !hasSuggestions} onClick={() => run('advance', async () => {
+            // Montagem do documento acontece uma vez só, ao sair de Sinais & Rede.
+            await onAssembled(null, true);
             toast({ title: 'Cultura pronta', description: 'Agora revise os sinais do Slack e da rede.' });
           })}>
             {busy === 'assemble' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
