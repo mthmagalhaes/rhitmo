@@ -121,12 +121,24 @@ export function CultureGuidedPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsAssembly, items.length, pendingSuggestions, hasSuggestions, isLoading, readOnly]);
 
+  // Começa sozinho ao abrir uma avaliação nova: sem clique, já mostrando "trabalhando".
+  const autoInit = useRef(false);
+  useEffect(() => {
+    if (readOnly || isLoading || items.length > 0 || autoInit.current || busy) return;
+    autoInit.current = true;
+    run('init', async () => {
+      await invoke({ action: 'init', reviewId });
+      await invoke({ action: 'suggest_all', reviewId });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readOnly, isLoading, items.length]);
+
   if (isLoading) return <RhitmoThinking hint={null} title="Abrindo os itens da cultura" steps={['Carregando...']} />;
 
   if (items.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed p-6 text-center space-y-3">
-        {busy === 'init' ? (
+        {busy === 'init' || (!readOnly && !autoInit.current) ? (
           <RhitmoThinking className="text-left" steps={['Lendo os valores e a régua da empresa...', 'Buscando anotações e 1:1s...', 'Escrevendo as sugestões...']} />
         ) : (
           <>

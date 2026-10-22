@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CultureGuidedPanel } from '@/components/review/CultureGuidedPanel';
 import { RhitmoThinking } from '@/components/ai/RhitmoThinking';
 import { ReviewMirrorPanel, type MirrorResult, type MirrorFinding } from '@/components/review/ReviewMirrorPanel';
-import { Compass, ScanSearch, Radio } from 'lucide-react';
+import { Compass, ScanSearch, Radio, Lock } from 'lucide-react';
 import { SignalsGuidedPanel } from '@/components/review/SignalsGuidedPanel';
 import { Button } from '@/components/ui/button';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
