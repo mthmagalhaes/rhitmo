@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
 
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-    const { action, reviewId, itemId } = parsed.data;
+    const { action, reviewId, itemId, stream } = parsed.data;
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { review, allowed, workspaceId } = await loadReviewWithAccess(admin, reviewId, u.user.id);
