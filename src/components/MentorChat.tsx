@@ -1253,7 +1253,28 @@ export const MentorChat = ({
                 })}
 
                 {/* Loading indicator — skeleton bubble + progresso suave */}
-                {isLoading && (
+                {isLoading && streamingText && (
+                  <div className="flex items-start gap-3 animate-in fade-in duration-200">
+                    <AssistantIcon />
+                    <div className="flex-1 min-w-0 text-sm text-foreground">
+                      <CitationCounterProvider>
+                        <ReactMarkdown components={markdownComponents}>
+                          {visibleStreamingText(streamingText)}
+                        </ReactMarkdown>
+                      </CitationCounterProvider>
+                      <span className="inline-block h-3.5 w-1.5 align-middle rounded-sm bg-primary/60 animate-pulse" />
+                      <div className="mt-2">
+                        <button
+                          onClick={stopStreaming}
+                          className="text-xs text-muted-foreground hover:text-foreground rounded-xl border border-border/60 px-2.5 py-1 transition-colors"
+                        >
+                          Parar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {isLoading && !streamingText && (
                   <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
                     <AssistantIcon />
                     <div className="flex flex-col gap-2 max-w-[75%]">
