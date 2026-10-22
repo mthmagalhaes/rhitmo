@@ -1073,6 +1073,7 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
     const modelName = useGateway
       ? (intent === 'deep_analysis' ? 'google/gemini-3.1-pro-preview' : 'google/gemini-3.7-flash')
       : 'gpt-4o-mini';
+    const wantsStream = body?.stream === true && useGateway;
 
     console.log(`Calling ${modelName} via ${useGateway ? 'Lovable AI Gateway' : 'OpenAI'}, context length:`, systemPrompt.length, 'history messages:', (conversationHistory || []).length);
 
@@ -1091,6 +1092,7 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
           model: modelName,
           messages: apiMessages,
           max_tokens: intent === 'deep_analysis' ? 3000 : intent === 'small_talk' ? 300 : 1200,
+          ...(wantsStream ? { stream: true } : {}),
         }),
         signal: controller.signal,
       });
@@ -1142,7 +1144,57 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
       );
     }
 
+    // Streaming (opt-in via body.stream): repassa SSE do gateway e, no fim,
+    // emite um evento `rhitmo_final` com o texto pós-processado + metadata.
+    const expectsCitationsStream = intent === 'deep_analysis' || intent === 'quick_question';
+    if (wantsStream && response.body) {
+      const upstream = response.body;
+      const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
+      let buffer = '';
+      let full = '';
+      const stream = new ReadableStream({
+        async start(ctrl) {
+          const reader = upstream.getReader();
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              ctrl.enqueue(value);
+              buffer += decoder.decode(value, { stream: true });
+              let idx: number;
+              while ((idx = buffer.indexOf('\n')) !== -1) {
+                const line = buffer.slice(0, idx).replace(/\r$/, '');
+                buffer = buffer.slice(idx + 1);
+                if (!line.startsWith('data: ')) continue;
+                const payload = line.slice(6).trim();
+                if (payload === '[DONE]') continue;
+                try {
+                  const j = JSON.parse(payload);
+                  const d = j?.choices?.[0]?.delta?.content;
+                  if (typeof d === 'string') full += d;
+                } catch { /* partial line */ }
+              }
+            }
+            let finalText = full;
+            if (expectsCitationsStream && (mode === 'member' || mode === 'member_self') && contextLines && !contextLines.startsWith('(Contexto histórico') && finalText && !/\[doc:[0-9a-fA-F-]{8,}\]/.test(finalText)) {
+              finalText = `> ⚠️ _Resposta sem citações — verifique antes de agir._\n\n${finalText}`;
+            }
+            log.info('end', { duration_ms: Date.now() - requestStart, streamed: true, response_length: finalText.length, mode });
+            ctrl.enqueue(encoder.encode(`data: ${JSON.stringify({ rhitmo_final: finalText, metadata: { summary_applied: summaryApplied, request_id: requestId } })}\n\n`));
+          } catch (e) {
+            log.error('stream_failed', e);
+          } finally {
+            await log.flush();
+            ctrl.close();
+          }
+        },
+      });
+      return new Response(stream, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream', 'x-request-id': requestId } });
+    }
+
     const data = await response.json();
+    
     
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
       console.error('Invalid OpenAI response structure:', data);
