@@ -355,7 +355,7 @@ export const MentorChat = ({
         }
       }, 100);
     }
-  }, [messages, isLoading]);
+  }, [messages, isLoading, streamingText]);
 
   useEffect(() => {
     if (!isLoading) {
