@@ -525,7 +525,29 @@ export const MentorChat = ({
         const MAX_RETRIES = 3;
         let data: any = null;
 
-        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const requestBody = {
+          question: finalMessage,
+          feedbacks: contextFeedbacks,
+          memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData,
+          mode: isLeader && !memberId ? 'leader_self' : 'member',
+          leaderUserId: isLeader ? effectiveUserId : undefined,
+          leaderName: isLeader ? (managerName || memberName) : undefined,
+          conversationHistory: messages.slice(-10).map(msg => ({ role: msg.role, content: msg.content })),
+          imageContent,
+        };
+
+        // 1B — tentativa com streaming. Se falhar antes do primeiro token,
+        // cai no fluxo JSON atual (com retries) logo abaixo.
+        clearTimeout(timeoutId);
+        try {
+          data = await streamMentorResponse(edgeFunctionName, session?.session?.access_token, requestBody);
+        } catch (e) {
+          console.warn('[MentorChat] streaming indisponível, usando modo completo', e);
+          data = null;
+        }
+        if (data) { if (loadingInterval) clearInterval(loadingInterval); }
+
+        for (let attempt = 0; !data && attempt <= MAX_RETRIES; attempt++) {
           if (attempt > 0) {
             const delay = Math.pow(2, attempt - 1) * 1000;
             setLoadingMessage(`Reconectando... (tentativa ${attempt}/${MAX_RETRIES})`);
