@@ -1,3 +1,4 @@
+import { capture } from '@/lib/productAnalytics';
 import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
