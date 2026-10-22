@@ -43,14 +43,53 @@ export function prefetchSignals(reviewId: string): Promise<any> {
   return p;
 }
 
+// Montagem do Rascunho Geral com texto chegando aos poucos (streaming).
+async function streamAssemble(reviewId: string, onPartial: (text: string) => void): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/culture-review-assist`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${session?.access_token ?? ''}`,
+    },
+    body: JSON.stringify({ action: 'assemble', reviewId, stream: true }),
+  });
+  if (!res.ok || !res.body || !res.headers.get('content-type')?.includes('text/event-stream')) {
+    let msg = `Falha ao montar (${res.status})`;
+    try { msg = (await res.json())?.error ?? msg; } catch { /* noop */ }
+    throw new Error(msg);
+  }
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '', text = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf('\n\n')) >= 0) {
+      const chunk = buf.slice(0, idx); buf = buf.slice(idx + 2);
+      if (!chunk.startsWith('data: ')) continue;
+      const evt = JSON.parse(chunk.slice(6));
+      if (evt.type === 'delta') { text += evt.text; onPartial(text); }
+      else if (evt.type === 'done') return evt.content as string;
+      else if (evt.type === 'error') throw new Error(evt.error);
+    }
+  }
+  if (!text.trim()) throw new Error('A Rhitmo não conseguiu montar o documento. Tente novamente.');
+  return text;
+}
+
 export function SignalsGuidedPanel({
-  reviewId, readOnly, onAssembled, onAssembleStart, onAssembleFailed,
+  reviewId, readOnly, onAssembled, onAssembleStart, onAssembleFailed, onAssembleDelta,
 }: {
   reviewId: string;
   readOnly: boolean;
   onAssembled: (content: string, advance: boolean) => void | Promise<void>;
   onAssembleStart?: () => void;
   onAssembleFailed?: () => void;
+  onAssembleDelta?: (partial: string) => void;
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -97,9 +136,15 @@ export function SignalsGuidedPanel({
   };
 
   const advance = () => run('assemble', async () => {
-    const data = await invoke({ action: 'assemble', reviewId });
-    await onAssembled(data.content, true);
-    toast({ title: 'Rascunho Geral montado', description: 'Cultura e sinais aceitos entraram no documento.' });
+    onAssembleStart?.();
+    try {
+      const content = await streamAssemble(reviewId, (partial) => onAssembleDelta?.(partial));
+      await onAssembled(content, true);
+      toast({ title: 'Rascunho Geral montado', description: 'Cultura e sinais aceitos entraram no documento.' });
+    } catch (e) {
+      onAssembleFailed?.();
+      throw e;
+    }
   });
 
   const reviewed = items.filter((i) => ['accepted', 'edited', 'skipped'].includes(i.status)).length;
