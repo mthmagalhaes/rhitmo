@@ -33,12 +33,24 @@ async function invoke(body: Record<string, unknown>) {
   return data;
 }
 
+// Busca de sinais em segundo plano (disparada enquanto o líder revisa a Cultura).
+const inflight = new Map<string, Promise<any>>();
+export function prefetchSignals(reviewId: string): Promise<any> {
+  const existing = inflight.get(reviewId);
+  if (existing) return existing;
+  const p = invoke({ action: 'signals_init', reviewId }).finally(() => inflight.delete(reviewId));
+  inflight.set(reviewId, p);
+  return p;
+}
+
 export function SignalsGuidedPanel({
-  reviewId, readOnly, onAssembled,
+  reviewId, readOnly, onAssembled, onAssembleStart, onAssembleFailed,
 }: {
   reviewId: string;
   readOnly: boolean;
   onAssembled: (content: string, advance: boolean) => void | Promise<void>;
+  onAssembleStart?: () => void;
+  onAssembleFailed?: () => void;
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -53,6 +65,17 @@ export function SignalsGuidedPanel({
       return (data ?? []) as SignalItem[];
     },
   });
+
+  // Se a busca em segundo plano ainda está rodando, mostra "pensando" e espera por ela.
+  useEffect(() => {
+    const p = inflight.get(reviewId);
+    if (!p) return;
+    setBusy('init');
+    p.then((r) => setEmpty(!!r?.empty || r?.count === 0)).catch(() => {}).finally(() => {
+      setBusy(null);
+      qc.invalidateQueries({ queryKey: ['review-signal-items', reviewId] });
+    });
+  }, [reviewId, qc]);
   const refresh = () => qc.invalidateQueries({ queryKey: ['review-signal-items', reviewId] });
 
   const run = async (key: string, fn: () => Promise<unknown>) => {
