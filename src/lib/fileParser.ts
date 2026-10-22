@@ -122,8 +122,10 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+const MAX_AI_PDF_BYTES = 15 * 1024 * 1024;
+
 /**
- * Extract text from images using GPT-4o Vision OCR
+ * Extract text from images (and PDFs) using AI vision via the backend.
  */
 async function extractFromImage(file: File): Promise<string> {
   const base64Data = await fileToBase64(file);
@@ -158,8 +160,19 @@ export async function extractTextFromFile(file: File): Promise<string> {
     const fileType = getFileType(file);
 
     switch (fileType) {
-      case 'pdf':
-        return await extractFromPdf(file);
+      case 'pdf': {
+        let text = '';
+        try { text = await extractFromPdf(file); } catch (e) { console.warn('[fileParser] pdfjs falhou, tentando IA', e); }
+        // 1A — PDF de slides/escaneado: pouco ou nenhum texto → IA lê o PDF.
+        if (text.replace(/\s+/g, '').length < 200 && file.size <= MAX_AI_PDF_BYTES) {
+          try {
+            const aiText = await extractFromImage(file);
+            if (aiText.trim().length > text.trim().length) return aiText;
+          } catch (e) { console.warn('[fileParser] leitura por IA do PDF falhou', e); }
+        }
+        if (!text.trim()) throw new Error('PDF sem texto legível');
+        return text;
+      }
       case 'docx':
         return await extractFromDocx(file);
       case 'pptx':
@@ -189,4 +202,23 @@ export async function extractTextFromFile(file: File): Promise<string> {
  */
 export function isFileSupported(file: File): boolean {
   return getFileType(file) !== 'unknown';
+}
+
+/**
+ * 1A — Lê um print e sugere a data do ocorrido, só quando ela aparece no print.
+ * Usado pelo Magic Paste / Nova anotação.
+ */
+export async function extractFromImageWithMeta(file: File): Promise<{ text: string; occurredAt: string | null }> {
+  try {
+    const base64Data = await fileToBase64(file);
+    const { data, error } = await supabase.functions.invoke('extract-text-vision', {
+      body: { base64Image: base64Data.split(',')[1], mimeType: file.type, mode: 'extract_meta' },
+    });
+    if (error || !data?.text || data.text === '[Nenhum texto detectado]') throw new Error('ocr_failed');
+    const occ = typeof data.occurred_at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.occurred_at) ? data.occurred_at : null;
+    return { text: data.text, occurredAt: occ };
+  } catch (e) {
+    console.error('[fileParser] meta OCR error:', e);
+    throw new Error('Não conseguimos ler o texto deste arquivo. Tente copiar e colar o conteúdo.');
+  }
 }

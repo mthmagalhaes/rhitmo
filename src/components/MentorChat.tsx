@@ -181,6 +181,79 @@ export const MentorChat = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  // 1B — resposta ao vivo (streaming SSE)
+  const [streamingText, setStreamingText] = useState<string | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
+
+  /**
+   * Faz a chamada com `stream: true`. Retorna `{ response, metadata }` quando
+   * conclui (ou quando o líder clica em Parar, com o texto parcial).
+   * Lança erro se falhar antes do primeiro token — o chamador cai no fluxo JSON.
+   */
+  const streamMentorResponse = async (fnName: string, token: string | undefined, body: Record<string, unknown>) => {
+    const ctrl = new AbortController();
+    streamAbortRef.current = ctrl;
+    const firstTokenTimer = setTimeout(() => ctrl.abort(), 45000);
+    let full = '';
+    let gotToken = false;
+    try {
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fnName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...body, stream: true }),
+        signal: ctrl.signal,
+      });
+      if (!resp.ok || !resp.body || !(resp.headers.get('content-type') || '').includes('text/event-stream')) {
+        throw new Error(`stream_unavailable_${resp.status}`);
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalText: string | null = null;
+      let metadata: any = null;
+      while (true) {
+        let chunk: ReadableStreamReadResult<Uint8Array>;
+        try { chunk = await reader.read(); } catch (e) {
+          if (gotToken) break; // Parar / queda após começar: mantém o parcial
+          throw e;
+        }
+        if (chunk.done) break;
+        buffer += decoder.decode(chunk.value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          const line = buffer.slice(0, idx).replace(/\r$/, '');
+          buffer = buffer.slice(idx + 1);
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') continue;
+          try {
+            const j = JSON.parse(payload);
+            if (typeof j.rhitmo_final === 'string') { finalText = j.rhitmo_final; metadata = j.metadata; continue; }
+            const d = j?.choices?.[0]?.delta?.content;
+            if (typeof d === 'string' && d) {
+              if (!gotToken) { gotToken = true; clearTimeout(firstTokenTimer); setLoadingMessage(''); }
+              full += d;
+              setStreamingText(full);
+            }
+          } catch { /* linha parcial */ }
+        }
+      }
+      const response = (finalText ?? full).trim();
+      if (!response) throw new Error('stream_empty');
+      return { response, metadata: metadata ?? {} };
+    } catch (e) {
+      if (gotToken && full.trim()) return { response: full.trim(), metadata: {} };
+      throw e;
+    } finally {
+      clearTimeout(firstTokenTimer);
+      streamAbortRef.current = null;
+    }
+  };
+
+  const stopStreaming = () => streamAbortRef.current?.abort();
+
+  /** Esconde citação `[doc:...` incompleta no fim do texto parcial. */
+  const visibleStreamingText = (t: string) => t.replace(/\[(?:d(?:o(?:c(?::[0-9a-fA-F-]*)?)?)?)?$/, '');
   const [loadingSeconds, setLoadingSeconds] = useState(0);
   const [lastSummaryApplied, setLastSummaryApplied] = useState(false);
   const [isExtractingFile, setIsExtractingFile] = useState(false);
@@ -282,7 +355,7 @@ export const MentorChat = ({
         }
       }, 100);
     }
-  }, [messages, isLoading]);
+  }, [messages, isLoading, streamingText]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -525,7 +598,28 @@ export const MentorChat = ({
         const MAX_RETRIES = 3;
         let data: any = null;
 
-        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const requestBody = {
+          question: finalMessage,
+          feedbacks: contextFeedbacks,
+          memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData,
+          mode: isLeader && !memberId ? 'leader_self' : 'member',
+          leaderUserId: isLeader ? effectiveUserId : undefined,
+          leaderName: isLeader ? (managerName || memberName) : undefined,
+          conversationHistory: messages.slice(-10).map(msg => ({ role: msg.role, content: msg.content })),
+          imageContent,
+        };
+
+        // 1B — tentativa com streaming. Se falhar antes do primeiro token,
+        // cai no fluxo JSON atual (com retries) logo abaixo.
+        try {
+          data = await streamMentorResponse(edgeFunctionName, session?.session?.access_token, requestBody);
+        } catch (e) {
+          console.warn('[MentorChat] streaming indisponível, usando modo completo', e);
+          data = null;
+        }
+        if (data) { if (loadingInterval) clearInterval(loadingInterval); }
+
+        for (let attempt = 0; !data && attempt <= MAX_RETRIES; attempt++) {
           if (attempt > 0) {
             const delay = Math.pow(2, attempt - 1) * 1000;
             setLoadingMessage(`Reconectando... (tentativa ${attempt}/${MAX_RETRIES})`);
@@ -659,7 +753,7 @@ export const MentorChat = ({
         errorMessage = error.message;
       }
       toast({ title: isLeader ? "Erro ao consultar mentor" : "Erro no Meu Rhitmo", description: errorMessage, variant: "destructive", duration: 7000 });
-    } finally { setIsLoading(false); setLoadingMessage(''); if (loadingInterval) clearInterval(loadingInterval); }
+    } finally { setIsLoading(false); setStreamingText(null); setLoadingMessage(''); if (loadingInterval) clearInterval(loadingInterval); }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1159,7 +1253,28 @@ export const MentorChat = ({
                 })}
 
                 {/* Loading indicator — skeleton bubble + progresso suave */}
-                {isLoading && (
+                {isLoading && streamingText && (
+                  <div className="flex items-start gap-3 animate-in fade-in duration-200">
+                    <AssistantIcon />
+                    <div className="flex-1 min-w-0 text-sm text-foreground">
+                      <CitationCounterProvider>
+                        <ReactMarkdown components={markdownComponents}>
+                          {visibleStreamingText(streamingText)}
+                        </ReactMarkdown>
+                      </CitationCounterProvider>
+                      <span className="inline-block h-3.5 w-1.5 align-middle rounded-sm bg-primary/60 animate-pulse" />
+                      <div className="mt-2">
+                        <button
+                          onClick={stopStreaming}
+                          className="text-xs text-muted-foreground hover:text-foreground rounded-xl border border-border/60 px-2.5 py-1 transition-colors"
+                        >
+                          Parar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {isLoading && !streamingText && (
                   <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
                     <AssistantIcon />
                     <div className="flex flex-col gap-2 max-w-[75%]">
