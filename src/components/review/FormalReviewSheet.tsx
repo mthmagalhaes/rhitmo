@@ -583,6 +583,7 @@ export function FormalReviewSheet({
                     readOnly={!!review.shared_with_member}
                     onAssembleStart={() => { setAssembling(true); advanceStep(2); setActiveTab('draft'); }}
                     onAssembleFailed={() => { setAssembling(false); setActiveTab('signals'); }}
+                    onAssembleDelta={(partial) => { setAssembling(false); setDraftText(partial); }}
                     onAssembled={async (content, advance) => {
                       setDraftText(content);
                       setAssembling(false);
