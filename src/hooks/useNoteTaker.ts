@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { capture } from '@/lib/productAnalytics';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -82,6 +83,7 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
       invokeNoteTaker({ action: 'connect', provider, api_key: apiKey }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
+      capture('connector_connected', { provider });
       toast({ title: `${providerLabel} conectado`, description: 'Vamos importar suas próximas notas automaticamente.' });
     },
     onError: (e: Error) =>
@@ -92,6 +94,7 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
     mutationFn: () => invokeNoteTaker({ action: 'disconnect', provider }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
+      capture('connector_disconnected', { provider });
       toast({ title: 'Desconectado', description: 'As notas já importadas continuam em Anotações & Evidências.' });
     },
     onError: (e: Error) =>

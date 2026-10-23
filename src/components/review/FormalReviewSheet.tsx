@@ -73,7 +73,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { replaceFuzzy } from '@/lib/fuzzyRange';
-import { capture } from '@/lib/productAnalytics';
+import { capture, markFirst } from '@/lib/productAnalytics';
 
 interface FormalReviewSheetProps {
   open: boolean;
@@ -267,7 +267,10 @@ export function FormalReviewSheet({
     setGuidedStep(opened);
   }, [review, stepKey, guidedStep, isCultureGuided]);
   const advanceStep = (n: number) => {
-    setGuidedStep((s) => Math.max(s ?? 0, n));
+    setGuidedStep((s) => {
+      if ((s ?? 0) < n) capture('review_step_completed', { step: n === 1 ? 'culture' : n === 2 ? 'signals' : String(n) });
+      return Math.max(s ?? 0, n);
+    });
     if (stepKey) localStorage.setItem(stepKey, String(n));
   };
   const step = guidedStep ?? 2;
@@ -378,6 +381,8 @@ export function FormalReviewSheet({
       queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
       queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
       queryClient.invalidateQueries({ queryKey: ['team-performance-reviews'] });
+      capture('review_shared', { mode: isCultureGuided ? 'institutional' : 'free' });
+      markFirst('review_shared');
       toast({ title: `Avaliação compartilhada com ${(review as any)?.team_members?.name || 'liderado'}!` });
       setShareDialogOpen(false);
       onSent?.();
