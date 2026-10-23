@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+// @ts-nocheck — run with: bun test src/lib/fuzzyRange.test.ts
+import { describe, it, expect } from 'bun:test';
 import { findFuzzyRange, replaceFuzzy } from './fuzzyRange';
 
 describe('findFuzzyRange', () => {
