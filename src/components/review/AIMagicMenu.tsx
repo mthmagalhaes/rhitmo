@@ -80,8 +80,8 @@ export function AIMagicMenu({ editor, reviewId }: { editor: Editor; reviewId: st
     <BubbleMenu
       editor={editor}
       shouldShow={({ editor: e, from, to }) => e.isEditable && (to - from > 3 || !!preview || busy)}
-      options={{ placement: 'bottom-start' }}
-      className="z-50"
+      options={{ placement: 'bottom-start', flip: { padding: { bottom: 96, top: 16 } }, shift: { padding: 16 } }}
+      className="z-[60]"
     >
       <div
         onMouseDown={(e) => { if ((e.target as HTMLElement).tagName !== 'INPUT') e.preventDefault(); }}
@@ -95,7 +95,7 @@ export function AIMagicMenu({ editor, reviewId }: { editor: Editor; reviewId: st
             {preview.noEvidence && (
               <p className="px-1 text-xs text-muted-foreground">Não encontrei uma anotação do período que sustente este trecho, e está tudo bem.</p>
             )}
-            <div className="max-h-48 overflow-y-auto rounded-xl bg-muted/40 p-3 text-sm leading-relaxed whitespace-pre-wrap">
+            <div className="max-h-[min(50vh,420px)] overflow-y-auto overscroll-contain rounded-xl bg-muted/40 p-3 text-sm leading-relaxed whitespace-pre-wrap">
               {preview.text.replace(/\[doc:[0-9a-f-]+\]/gi, '⟨evidência⟩')}
             </div>
             <div className="flex flex-wrap gap-1.5">

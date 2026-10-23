@@ -1,3 +1,4 @@
+import { ToastAction } from '@/components/ui/toast';
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -306,7 +307,7 @@ export function FormalReviewSheet({
   };
 
   const markFinding = (f: MirrorFinding, patch: Partial<MirrorFinding>) =>
-    setMirrorResult((prev) => prev ? { ...prev, findings: prev.findings.map((x) => x === f ? { ...x, ...patch } : x) } : prev);
+    setMirrorResult((prev) => prev ? { ...prev, findings: prev.findings.map((x) => (x === f || (x.excerpt === f.excerpt && x.explanation === f.explanation)) ? { ...x, ...patch } : x) } : prev);
   const commitDraft = (next: string) => {
     setDraftText(next);
     if (editMode) setEditorHtml(markdownToEditorHtml(next));
