@@ -51,6 +51,10 @@ import {
   Enterprise,
   Recursos,
   Guia,
+  Integracoes,
+  Integracao,
+  Blog,
+  BlogPost,
   ModeloAvaliacao,
   GeradorAvaliacao,
   ResetPassword,
@@ -226,6 +230,10 @@ const App = () => (
               <Route path="/enterprise" element={Public(<Enterprise />)} />
               <Route path="/recursos" element={Public(<Recursos />)} />
               <Route path="/guias/:slug" element={Public(<Guia />)} />
+              <Route path="/integracoes" element={Public(<Integracoes />)} />
+              <Route path="/integracoes/:slug" element={Public(<Integracao />)} />
+              <Route path="/blog" element={Public(<Blog />)} />
+              <Route path="/blog/:slug" element={Public(<BlogPost />)} />
               <Route path="/modelos/avaliacao-de-desempenho" element={Public(<ModeloAvaliacao />)} />
               <Route path="/ferramentas/gerador-avaliacao-desempenho" element={Public(<GeradorAvaliacao />)} />
               <Route path="/reset-password" element={Public(<ResetPassword />)} />
