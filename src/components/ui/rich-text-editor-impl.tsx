@@ -5,7 +5,8 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Highlight from '@tiptap/extension-highlight';
 import { Toggle } from '@/components/ui/toggle';
 import { Separator } from '@/components/ui/separator';
-import { Bold, Italic, Heading1, Heading2, List, ListOrdered } from 'lucide-react';
+import { Bold, Italic, Heading1, Heading2, Heading3, List, ListOrdered } from 'lucide-react';
+import { AIMagicMenu } from '@/components/review/AIMagicMenu';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useCallback } from 'react';
 import { cleanTranscriptText } from '@/lib/textSanitizer';
@@ -43,6 +44,8 @@ export interface RichTextEditorProps {
   editorRef?: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
   highlightWords?: string[];
   biasMatches?: BiasMatch[];
+  /** Liga a barra AI Magic (seleção de texto) para esta avaliação. */
+  aiMagicReviewId?: string;
 }
 
 export const RichTextEditor = ({
@@ -55,6 +58,7 @@ export const RichTextEditor = ({
   highlightWords,
   biasMatches,
   appearance = 'default',
+  aiMagicReviewId,
 }: RichTextEditorProps) => {
   const reading = appearance === 'reading';
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,7 +108,8 @@ export const RichTextEditor = ({
 
   // Sync content when it changes externally
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
+    // Nunca sobrescreve enquanto o líder digita/formatará (evita perder a formatação recém-aplicada).
+    if (editor && !editor.isFocused && content !== editor.getHTML()) {
       editor.commands.setContent(content);
     }
   }, [content, editor]);
@@ -184,6 +189,7 @@ export const RichTextEditor = ({
         <Toggle
           size="sm"
           pressed={editor.isActive('bold')}
+          onMouseDown={(e) => e.preventDefault()}
           onPressedChange={() => editor.chain().focus().toggleBold().run()}
           disabled={disabled}
           aria-label="Negrito"
@@ -193,6 +199,7 @@ export const RichTextEditor = ({
         <Toggle
           size="sm"
           pressed={editor.isActive('italic')}
+          onMouseDown={(e) => e.preventDefault()}
           onPressedChange={() => editor.chain().focus().toggleItalic().run()}
           disabled={disabled}
           aria-label="Itálico"
@@ -204,21 +211,25 @@ export const RichTextEditor = ({
         
         <Toggle
           size="sm"
-          pressed={editor.isActive('heading', { level: 1 })}
-          onPressedChange={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          pressed={editor.isActive('heading', { level: reading ? 2 : 1 })}
+          onMouseDown={(e) => e.preventDefault()}
+          onPressedChange={() => editor.chain().focus().toggleHeading({ level: reading ? 2 : 1 }).run()}
           disabled={disabled}
-          aria-label="Título 1"
+          aria-label={reading ? 'Título de seção' : 'Título 1'}
+          title={reading ? 'Título de seção' : 'Título 1'}
         >
-          <Heading1 className="h-4 w-4" />
+          {reading ? <Heading2 className="h-4 w-4" /> : <Heading1 className="h-4 w-4" />}
         </Toggle>
         <Toggle
           size="sm"
-          pressed={editor.isActive('heading', { level: 2 })}
-          onPressedChange={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          pressed={editor.isActive('heading', { level: reading ? 3 : 2 })}
+          onMouseDown={(e) => e.preventDefault()}
+          onPressedChange={() => editor.chain().focus().toggleHeading({ level: reading ? 3 : 2 }).run()}
           disabled={disabled}
-          aria-label="Título 2"
+          aria-label={reading ? 'Subtítulo' : 'Título 2'}
+          title={reading ? 'Subtítulo' : 'Título 2'}
         >
-          <Heading2 className="h-4 w-4" />
+          {reading ? <Heading3 className="h-4 w-4" /> : <Heading2 className="h-4 w-4" />}
         </Toggle>
         
         <Separator orientation="vertical" className="mx-1 h-6" />
@@ -226,6 +237,7 @@ export const RichTextEditor = ({
         <Toggle
           size="sm"
           pressed={editor.isActive('bulletList')}
+          onMouseDown={(e) => e.preventDefault()}
           onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
           disabled={disabled}
           aria-label="Lista com marcadores"
@@ -235,6 +247,7 @@ export const RichTextEditor = ({
         <Toggle
           size="sm"
           pressed={editor.isActive('orderedList')}
+          onMouseDown={(e) => e.preventDefault()}
           onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
           disabled={disabled}
           aria-label="Lista numerada"
@@ -258,6 +271,7 @@ export const RichTextEditor = ({
         style={{ minHeight }}
       />
       <BiasInlinePopover editor={editor} />
+      {aiMagicReviewId && !disabled && <AIMagicMenu editor={editor} reviewId={aiMagicReviewId} />}
     </div>
   );
 };
