@@ -32,6 +32,7 @@ const FILES = [
   "modes/culture-guided-assemble.md",
   "modes/culture-guided-signals.md",
   "modes/review-mirror.md",
+  "modes/review-rewrite.md",
   "modes/public-review-generator.md",
   "channels/web.md",
   "channels/slack.md",

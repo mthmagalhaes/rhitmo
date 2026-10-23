@@ -47,7 +47,8 @@ export type Mode =
   | "culture-guided-item"
   | "culture-guided-assemble"
   | "culture-guided-signals"
-  | "review-mirror";
+  | "review-mirror"
+  | "review-rewrite";
 
 // Variáveis opcionais reconhecidas pelos modos novos (v2 da alma):
 //   sessionSummary, sessionCount, pendingActions,
@@ -140,6 +141,7 @@ const MODE_BLOCKS: Record<Mode, string[]> = {
   "culture-guided-assemble": ["00-identity.md","01-guardrails.md","02-analysis-matrix.md","03-tone-and-format.md","05-citations.md","modes/formal-review-draft.md","modes/culture-guided-assemble.md"],
   "culture-guided-signals": ["00-identity.md","01-guardrails.md","05-citations.md","modes/culture-guided-signals.md"],
   "review-mirror": ["00-identity.md","01-guardrails.md","02-analysis-matrix.md","modes/review-mirror.md"],
+  "review-rewrite": ["00-identity.md","01-guardrails.md","modes/review-rewrite.md"],
   "one-on-one-draft": [
     "00-identity.md",
     "01-guardrails.md",
