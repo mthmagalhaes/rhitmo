@@ -324,11 +324,11 @@ export function CreateFormalReviewDialog({
             </div>
           </div>
 
-          {effectiveMode === 'full_draft' && (
-            <p className="text-xs text-muted-foreground rounded-xl bg-muted/40 px-3 py-2">
-              A Rhitmo analisa entregas e evidências do período{publishedCulture ? ' e usa a cultura e a régua da empresa como referência' : ''}. Você revisa tudo antes de compartilhar.
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground rounded-xl bg-muted/40 px-3 py-2 min-h-[3rem]">
+            {effectiveMode === 'full_draft'
+              ? <>A Rhitmo analisa entregas e evidências do período{publishedCulture ? ' e usa a cultura e a régua da empresa como referência' : ''}. Você revisa tudo antes de compartilhar.</>
+              : 'Você passa por Cultura, Sinais & Rede, Rascunho Geral e Espelho. A Rhitmo prepara cada etapa e você revisa tudo antes de compartilhar.'}
+          </p>
 
           {/* Actions */}
           <div className="flex justify-end gap-2">

@@ -62,7 +62,11 @@ Deno.serve(async (req) => {
         },
       }],
       tool_choice: { type: "function", function: { name: "return_text" } },
+      max_tokens: 4096,
     });
+    if (ai?.choices?.[0]?.finish_reason === "length") {
+      return json({ error: "A resposta ficou longa demais e veio incompleta. Tente selecionar um trecho menor." }, 502);
+    }
     const out = toolArgs(ai) ?? {};
     let result = String(out.text ?? "").trim();
     if (!result) return json({ error: "A Rhitmo não conseguiu reescrever agora. Tente de novo." }, 502);

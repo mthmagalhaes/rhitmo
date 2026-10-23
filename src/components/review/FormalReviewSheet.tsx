@@ -1,3 +1,4 @@
+import { ToastAction } from '@/components/ui/toast';
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -306,20 +307,30 @@ export function FormalReviewSheet({
   };
 
   const markFinding = (f: MirrorFinding, patch: Partial<MirrorFinding>) =>
-    setMirrorResult((prev) => prev ? { ...prev, findings: prev.findings.map((x) => x === f ? { ...x, ...patch } : x) } : prev);
+    setMirrorResult((prev) => prev ? { ...prev, findings: prev.findings.map((x) => (x === f || (x.excerpt === f.excerpt && x.explanation === f.explanation)) ? { ...x, ...patch } : x) } : prev);
   const commitDraft = (next: string) => {
     setDraftText(next);
     if (editMode) setEditorHtml(markdownToEditorHtml(next));
   };
 
   const applySuggestion = async (f: MirrorFinding) => {
+    if (isPlaceholder) return;
     if (f.excerpt) {
-      const next = replaceFuzzy(draftText, f.excerpt, f.suggestion);
+      const prev = draftText;
+      const next = replaceFuzzy(prev, f.excerpt, f.suggestion);
       if (next === null) { markFinding(f, { stale: true }); return; }
       commitDraft(next);
       markFinding(f, { dismissed: true });
       capture('mirror_suggestion_applied', { type: f.type });
-      toast({ title: 'Trecho atualizado', description: 'Lembre de salvar o rascunho.' });
+      toast({
+        title: 'Sugestão aplicada no Rascunho Geral',
+        description: 'Lembre de salvar o rascunho.',
+        action: (
+          <ToastAction altText="Desfazer" onClick={() => { commitDraft(prev); markFinding(f, { dismissed: false }); }}>
+            Desfazer
+          </ToastAction>
+        ),
+      });
       return;
     }
     // Alertas sem trecho (ex.: Cobertura): a Rhitmo escreve um parágrafo e o líder decide.
@@ -746,7 +757,7 @@ export function FormalReviewSheet({
                   <div className="flex items-center gap-2 shrink-0">
                   {!review.shared_with_member && !isPlaceholder && step >= 2 && (
                     <Button size="sm" variant="ghost" className="gap-1.5" disabled={mirrorRunning}
-                      onClick={() => { setActiveTab('mirror'); runMirror(); }}>
+                      onClick={() => { setActiveTab('mirror'); if (!isPlaceholder && !mirrorRunning) runMirror(); }}>
                       <ScanSearch className="h-3.5 w-3.5" /> Revisar no Espelho
                     </Button>
                   )}
