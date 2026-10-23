@@ -13,6 +13,8 @@ export function ContentLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link to="/" aria-label="Rhitmo, página inicial"><RhitmoLogo size="sm" /></Link>
           <nav className="flex items-center gap-1">
+            <Link to="/integracoes" className="hidden px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:inline">Integrações</Link>
+            <Link to="/blog" className="hidden px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:inline">Blog</Link>
             <Link to="/recursos" className="hidden px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:inline">Recursos</Link>
             <Link to="/auth" className="hidden px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:inline">Entrar</Link>
             <Button asChild size="sm" className="rounded-xl"><Link to={TRIAL_URL}>Testar grátis</Link></Button>
@@ -25,6 +27,8 @@ export function ContentLayout({ children }: { children: ReactNode }) {
           <RhitmoLogo size="sm" />
           <div className="flex flex-wrap gap-6">
             <Link to="/recursos" className="hover:text-foreground">Recursos</Link>
+            <Link to="/integracoes" className="hover:text-foreground">Integrações</Link>
+            <Link to="/blog" className="hover:text-foreground">Blog</Link>
             <Link to="/ferramentas/gerador-avaliacao-desempenho" className="hover:text-foreground">Gerador de avaliação</Link>
             <Link to="/modelos/avaliacao-de-desempenho" className="hover:text-foreground">Modelo de avaliação</Link>
             <Link to="/confianca" className="hover:text-foreground">Confiança</Link>

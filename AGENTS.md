@@ -7,3 +7,4 @@
 - Review Mirror findings live in `review_mirror_checks`, never on `performance_reviews` — why: members can read shared reviews and must not see the Mirror.
 - Culture-guided review signal cards (Slack/ONA) live only in `review_signal_items`, never on `performance_reviews`; assembly includes only accepted/edited cards — why: members must not see raw signals and an empty signal set keeps the prompt unchanged.
 - Product analytics events go only through `src/lib/productAnalytics.ts` (PostHog, no autocapture/recording, IDs and roles only — never note, review or transcript content) — why: one privacy-safe choke point for telemetry.
+- Public integration pages read cards from `connectorsCatalog.ts` and only editorial copy from `src/content/integracoes.ts`; blog posts live in `src/content/blog.ts` — why: one catalog for app and site, content without a CMS.
