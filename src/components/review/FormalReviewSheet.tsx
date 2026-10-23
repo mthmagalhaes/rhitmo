@@ -313,13 +313,23 @@ export function FormalReviewSheet({
   };
 
   const applySuggestion = async (f: MirrorFinding) => {
+    if (isPlaceholder) return;
     if (f.excerpt) {
-      const next = replaceFuzzy(draftText, f.excerpt, f.suggestion);
+      const prev = draftText;
+      const next = replaceFuzzy(prev, f.excerpt, f.suggestion);
       if (next === null) { markFinding(f, { stale: true }); return; }
       commitDraft(next);
       markFinding(f, { dismissed: true });
       capture('mirror_suggestion_applied', { type: f.type });
-      toast({ title: 'Trecho atualizado', description: 'Lembre de salvar o rascunho.' });
+      toast({
+        title: 'Sugestão aplicada no Rascunho Geral',
+        description: 'Lembre de salvar o rascunho.',
+        action: (
+          <ToastAction altText="Desfazer" onClick={() => { commitDraft(prev); markFinding(f, { dismissed: false }); }}>
+            Desfazer
+          </ToastAction>
+        ),
+      });
       return;
     }
     // Alertas sem trecho (ex.: Cobertura): a Rhitmo escreve um parágrafo e o líder decide.
@@ -746,7 +756,7 @@ export function FormalReviewSheet({
                   <div className="flex items-center gap-2 shrink-0">
                   {!review.shared_with_member && !isPlaceholder && step >= 2 && (
                     <Button size="sm" variant="ghost" className="gap-1.5" disabled={mirrorRunning}
-                      onClick={() => { setActiveTab('mirror'); runMirror(); }}>
+                      onClick={() => { setActiveTab('mirror'); if (!isPlaceholder && !mirrorRunning) runMirror(); }}>
                       <ScanSearch className="h-3.5 w-3.5" /> Revisar no Espelho
                     </Button>
                   )}
