@@ -481,7 +481,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
 
       // Backup only first feedback (no toast)
       if (firstFeedback) {
-        capture('note_created', { members: memberIds.length });
+        capture('note_created', { members: targetMemberIds.length });
         markFirst('note_created');
       }
       if (firstFeedback) {
