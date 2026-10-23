@@ -12,6 +12,10 @@ const TOKEN = import.meta.env.VITE_LOVABLE_CONNECTOR_POSTHOG_API_KEY as string |
 const REGION = (import.meta.env.VITE_LOVABLE_CONNECTOR_POSTHOG_REGION as string | undefined) || 'eu';
 
 let ready = false;
+let suppressed = false;
+
+/** Disable all capture (e.g. super admin impersonating). */
+export function setAnalyticsSuppressed(v: boolean) { suppressed = v; }
 
 function init() {
   if (ready || !TOKEN || typeof window === 'undefined') return ready;
@@ -36,13 +40,19 @@ function init() {
 type Props = Record<string, string | number | boolean | null | undefined>;
 
 export function capture(event: string, props: Props = {}) {
-  if (!init()) return;
+  if (suppressed || !init()) return;
   try { posthog.capture(event, props); } catch { /* never throw */ }
 }
 
 export function identify(userId: string, props: Props) {
-  if (!init()) return;
+  if (suppressed || !init()) return;
   try { posthog.identify(userId, props); } catch { /* noop */ }
+}
+
+/** Mark a first-time milestone on the person (kept from first occurrence). */
+export function markFirst(milestone: string) {
+  if (suppressed || !init()) return;
+  try { posthog.capture('$set', { $set_once: { [`first_${milestone}_at`]: new Date().toISOString() } }); } catch { /* noop */ }
 }
 
 export function resetIdentity() {

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { identify, resetIdentity } from '@/lib/productAnalytics';
+import { identify, resetIdentity , setAnalyticsSuppressed } from '@/lib/productAnalytics';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useImpersonation } from '@/hooks/useImpersonation';
@@ -135,6 +135,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (contextError) trackFunnel('account_load_failed', { payload: { message: String(contextError) } });
   }, [contextError]);
+
+  useEffect(() => { setAnalyticsSuppressed(isImpersonating); }, [isImpersonating]);
 
   // Product analytics identity (skip while impersonating to avoid mixing users)
   useEffect(() => {

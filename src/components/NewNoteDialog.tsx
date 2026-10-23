@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { capture, markFirst } from '@/lib/productAnalytics';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -479,6 +480,10 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
       }
 
       // Backup only first feedback (no toast)
+      if (firstFeedback) {
+        capture('note_created', { members: memberIds.length });
+        markFirst('note_created');
+      }
       if (firstFeedback) {
         supabase.functions.invoke('backup-data', {
           body: { 

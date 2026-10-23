@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { capture } from '@/lib/productAnalytics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -65,6 +66,7 @@ export default function DirectReportReviewView() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shared-review', reviewId] });
+      capture('review_acknowledged');
       toast.success('Leitura confirmada com sucesso!');
       // Fire-and-forget email notification to manager (resolved server-side)
       supabase.functions.invoke('notify-review-acknowledged', { body: { reviewId } })

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { capture } from '@/lib/productAnalytics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -133,6 +134,7 @@ export function CreateFormalReviewDialog({
     },
     onSuccess: async (review) => {
       queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
+      capture('review_created', { mode: effectiveMode === 'culture_guided' ? 'institutional' : 'free' });
       const memberName = member?.name ?? '';
       toast({ title: 'A Rhitmo começou a preparar a avaliação', description: 'Pode sair desta tela, avisamos quando estiver pronta.' });
       onOpenChange(false);

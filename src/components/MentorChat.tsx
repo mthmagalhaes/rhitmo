@@ -251,7 +251,10 @@ export const MentorChat = ({
     }
   };
 
-  const stopStreaming = () => streamAbortRef.current?.abort();
+  const stopStreaming = () => {
+    if (streamAbortRef.current) capture('mentor_stream_stopped');
+    streamAbortRef.current?.abort();
+  };
 
   /** Esconde citação `[doc:...` incompleta no fim do texto parcial. */
   const visibleStreamingText = (t: string) => t.replace(/\[(?:d(?:o(?:c(?::[0-9a-fA-F-]*)?)?)?)?$/, '');
