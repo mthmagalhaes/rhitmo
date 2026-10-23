@@ -14,6 +14,8 @@ export interface MirrorFinding {
   suggestion: string;
   doc_id?: string;
   dismissed?: boolean;
+  /** O texto mudou e o trecho não foi mais encontrado. */
+  stale?: boolean;
 }
 export interface MirrorResult { findings: MirrorFinding[]; checked_at?: string }
 
@@ -102,8 +104,12 @@ export function ReviewMirrorPanel({
           {f.doc_id && UUID_RE.test(f.doc_id) && <div><CitationChip docId={f.doc_id} /></div>}
           {!readOnly && (
             <div className="flex gap-2 pt-1">
-              {f.excerpt && (
-                <Button size="sm" variant="outline" className="rounded-xl" onClick={() => onApplySuggestion(f)}>Usar sugestão no texto</Button>
+              {f.stale ? (
+                <span className="text-xs text-muted-foreground self-center">Texto mudou, revise de novo.</span>
+              ) : (
+                <Button size="sm" variant="outline" className="rounded-xl" onClick={() => onApplySuggestion(f)}>
+                  {f.excerpt ? 'Aplicar sugestão' : 'Escrever trecho sugerido'}
+                </Button>
               )}
               <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => onDismiss(i)}>
                 <EyeOff className="h-3.5 w-3.5 mr-1" /> Ignorar

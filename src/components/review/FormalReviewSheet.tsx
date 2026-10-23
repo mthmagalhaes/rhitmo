@@ -71,6 +71,8 @@ import type { RecapClassification } from '@/lib/recapActions';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { replaceFuzzy } from '@/lib/fuzzyRange';
+import { capture } from '@/lib/productAnalytics';
 
 interface FormalReviewSheetProps {
   open: boolean;
@@ -284,6 +286,7 @@ export function FormalReviewSheet({
     if (!reviewId || isPlaceholder) return null;
     setMirrorRunning(true);
     try {
+      capture('mirror_run', {});
       const res = await invokeMirror({ reviewId, content: draftText });
       setMirrorResult(res);
       setMirrorCheckedText(draftText);
@@ -302,13 +305,37 @@ export function FormalReviewSheet({
     try { await invokeMirror({ reviewId, dismissIndex: index }); } catch { /* registro best-effort */ }
   };
 
-  const applySuggestion = (f: MirrorFinding) => {
-    if (f.excerpt && draftText.includes(f.excerpt)) {
-      setDraftText(draftText.replace(f.excerpt, f.suggestion));
-      setMirrorResult((prev) => prev ? { ...prev, findings: prev.findings.map((x) => x === f ? { ...x, dismissed: true } : x) } : prev);
+  const markFinding = (f: MirrorFinding, patch: Partial<MirrorFinding>) =>
+    setMirrorResult((prev) => prev ? { ...prev, findings: prev.findings.map((x) => x === f ? { ...x, ...patch } : x) } : prev);
+  const commitDraft = (next: string) => {
+    setDraftText(next);
+    if (editMode) setEditorHtml(markdownToEditorHtml(next));
+  };
+
+  const applySuggestion = async (f: MirrorFinding) => {
+    if (f.excerpt) {
+      const next = replaceFuzzy(draftText, f.excerpt, f.suggestion);
+      if (next === null) { markFinding(f, { stale: true }); return; }
+      commitDraft(next);
+      markFinding(f, { dismissed: true });
+      capture('mirror_suggestion_applied', { type: f.type });
       toast({ title: 'Trecho atualizado', description: 'Lembre de salvar o rascunho.' });
-    } else {
-      toast({ title: 'Trecho não encontrado no texto', description: 'Ajuste manualmente no editor.' });
+      return;
+    }
+    // Alertas sem trecho (ex.: Cobertura): a Rhitmo escreve um parágrafo e o líder decide.
+    try {
+      const { data, error } = await supabase.functions.invoke('review-rewrite', {
+        body: { reviewId, action: 'suggest_insert', text: `${f.explanation}\nSugestão: ${f.suggestion}` },
+      });
+      if (error) throw error;
+      const accepted = window.confirm(`A Rhitmo sugere acrescentar ao final:\n\n${String(data.text).replace(/\[doc:[0-9a-f-]+\]/gi, '(evidência)')}\n\nInserir no rascunho?`);
+      if (!accepted) return;
+      commitDraft(`${draftText.trimEnd()}\n\n${data.text}\n`);
+      markFinding(f, { dismissed: true });
+      capture('mirror_suggestion_applied', { type: f.type });
+      toast({ title: 'Trecho inserido', description: 'Lembre de salvar o rascunho.' });
+    } catch (e: any) {
+      toast({ title: 'Não foi possível escrever o trecho', description: e.message, variant: 'destructive' });
     }
   };
 
@@ -649,7 +676,7 @@ export function FormalReviewSheet({
                   </Collapsible>
                 )}
 
-                {!editMode && draftText.startsWith('_Gerando') && (
+                {!editMode && !assembling && draftText.startsWith('_Gerando') && (
                   <RhitmoThinking
                     steps={[
                       `Buscando anotações e 1:1s de ${(review.team_members as any)?.name ?? 'quem você avalia'}...`,
@@ -658,7 +685,7 @@ export function FormalReviewSheet({
                     ]}
                   />
                 )}
-                {!editMode && draftText.startsWith('_Preparando') && (
+                {!editMode && !assembling && draftText.startsWith('_Preparando') && (
                   <RhitmoThinking steps={['Esperando as sugestões da cultura...', 'Juntando valores e comportamentos...', 'Montando o documento...']} />
                 )}
 
@@ -716,6 +743,13 @@ export function FormalReviewSheet({
                         : 'Texto gerado pela IA com base nas evidências do período.'}
                     </p>
                   </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                  {!review.shared_with_member && !isPlaceholder && step >= 2 && (
+                    <Button size="sm" variant="ghost" className="gap-1.5" disabled={mirrorRunning}
+                      onClick={() => { setActiveTab('mirror'); runMirror(); }}>
+                      <ScanSearch className="h-3.5 w-3.5" /> Revisar no Espelho
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -735,6 +769,7 @@ export function FormalReviewSheet({
                       </>
                     )}
                   </Button>
+                  </div>
                 </div>
 
                 {/* Reading mode: styled markdown render */}
@@ -770,6 +805,7 @@ export function FormalReviewSheet({
                   <div className={`[&_.ProseMirror]:px-5 sm:[&_.ProseMirror]:px-6 [&_.ProseMirror]:py-5 ${READING_PROSE}`}>
                     <RichTextEditor
                       appearance="reading"
+                      aiMagicReviewId={review.shared_with_member ? undefined : reviewId}
                       content={editorHtml}
                       onChange={(html) => {
                         setEditorHtml(html);

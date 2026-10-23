@@ -305,8 +305,8 @@ export function CreateFormalReviewDialog({
                 onClick={() => setAuthoringMode('full_draft')}
                 className={cn('text-left rounded-xl border p-3 transition-colors', effectiveMode === 'full_draft' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40')}
               >
-                <div className="flex items-center gap-1.5 text-sm font-medium"><Sparkles className="h-3.5 w-3.5" /> Rascunho completo</div>
-                <p className="text-xs text-muted-foreground mt-1">A Rhitmo escreve a avaliação inteira e você edita.</p>
+                <div className="flex items-center gap-1.5 text-sm font-medium"><Sparkles className="h-3.5 w-3.5" /> Rascunho livre por evidências</div>
+                <p className="text-xs text-muted-foreground mt-1">A Rhitmo escreve a avaliação inteira a partir de anotações, 1:1s e evidências do período. Você edita livremente.</p>
               </button>
               <button
                 type="button"
@@ -314,10 +314,10 @@ export function CreateFormalReviewDialog({
                 onClick={() => setAuthoringMode('culture_guided')}
                 className={cn('text-left rounded-xl border p-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed', effectiveMode === 'culture_guided' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40')}
               >
-                <div className="flex items-center gap-1.5 text-sm font-medium"><Compass className="h-3.5 w-3.5" /> Guiado pela cultura</div>
+                <div className="flex items-center gap-1.5 text-sm font-medium"><Compass className="h-3.5 w-3.5" /> Avaliação Institucional</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {cultureAvailable
-                    ? 'Para cada valor da empresa, a Rhitmo sugere texto e nível. Você decide item a item.'
+                    ? 'Estruturada pela cultura da empresa: valores, comportamentos e régua, combinados com sinais do dia a dia. Passo a passo com revisão do Espelho.'
                     : 'Disponível quando o RH publicar os valores e a régua da empresa.'}
                 </p>
               </button>
