@@ -52,7 +52,7 @@ export default function Integracoes() {
             {filters.map((f) => (
               <button key={f.id} onClick={() => setFilter(f.id)}
                 className={cn('rounded-xl px-4 py-2 text-sm font-medium transition-colors',
-                  filter === f.id ? 'bg-foreground text-background' : 'bg-muted/50 text-muted-foreground hover:text-foreground')}>
+                  filter === f.id ? 'bg-slate-900 text-white' : 'bg-muted/50 text-muted-foreground hover:text-foreground')}>
                 {f.label}
               </button>
             ))}

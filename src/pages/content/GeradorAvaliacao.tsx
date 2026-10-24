@@ -98,7 +98,7 @@ export default function GeradorAvaliacao() {
             <div className="mt-2 flex flex-wrap gap-2">
               {TONES.map((t) => (
                 <button key={t.id} type="button" onClick={() => setTone(t.id)}
-                  className={cn('rounded-full px-4 py-2 text-sm font-medium transition-colors', tone === t.id ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground')}>
+                  className={cn('rounded-full px-4 py-2 text-sm font-medium transition-colors', tone === t.id ? 'bg-slate-900 text-white' : 'bg-muted text-muted-foreground hover:text-foreground')}>
                   {t.label}
                 </button>
               ))}

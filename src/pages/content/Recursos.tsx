@@ -27,7 +27,7 @@ export default function Recursos() {
         <p className="mt-5 max-w-2xl text-lg text-muted-foreground">{DESC}</p>
 
         <div className="mt-12 grid gap-4 md:grid-cols-5">
-          <Link to="/ferramentas/gerador-avaliacao-desempenho" className="group rounded-3xl bg-foreground p-8 text-background transition-transform hover:-translate-y-1 md:col-span-3">
+          <Link to="/ferramentas/gerador-avaliacao-desempenho" className="group rounded-3xl bg-slate-900 p-8 text-white transition-transform hover:-translate-y-1 md:col-span-3">
             <Sparkles className="h-6 w-6" />
             <p className="mt-6 text-xs uppercase tracking-[0.18em] opacity-70">Ferramenta grátis com IA</p>
             <h2 className="mt-2 font-serif text-2xl font-bold tracking-tight md:text-3xl">Gerador de texto para avaliação de desempenho</h2>

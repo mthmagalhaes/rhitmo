@@ -64,7 +64,7 @@ export default function Integracao() {
             <ol className="mt-5 space-y-4">
               {it.steps.map((s, n) => (
                 <li key={s} className="flex gap-3 text-sm leading-relaxed">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background">{n + 1}</span>{s}
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">{n + 1}</span>{s}
                 </li>
               ))}
             </ol>
