@@ -40,6 +40,11 @@ export default function Recursos() {
             <h2 className="mt-2 font-serif text-2xl font-bold tracking-tight">Modelo de avaliação de desempenho</h2>
             <p className="mt-3 text-sm text-muted-foreground">Com roteiro de 1:1 de bônus.</p>
           </Link>
+          <Link to="/ferramentas/calculadora-custo-avaliacao" className="rounded-3xl bg-card p-8 shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1 md:col-span-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Calculadora grátis</p>
+            <h2 className="mt-2 font-serif text-2xl font-bold tracking-tight">Quanto custa o seu ciclo de avaliação?</h2>
+            <p className="mt-3 text-sm text-muted-foreground">Horas e custo por ano, com a conta à vista.</p>
+          </Link>
         </div>
 
         <h2 className="mt-16 flex items-center gap-2 font-serif text-2xl font-bold tracking-tight"><BookOpen className="h-5 w-5 text-slate-900" /> Guias</h2>
