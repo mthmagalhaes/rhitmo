@@ -89,7 +89,7 @@ export default function BlogPost() {
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               {others.map((p) => (
                 <Link key={p.slug} to={`/blog/${p.slug}`} className="rounded-2xl bg-card p-5 shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1">
-                  <p className="text-xs font-medium text-primary">{p.category}</p>
+                  <p className="text-xs font-medium text-slate-900">{p.category}</p>
                   <p className="mt-1 font-semibold tracking-tight">{p.title}</p>
                 </Link>
               ))}

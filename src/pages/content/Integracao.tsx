@@ -42,7 +42,7 @@ export default function Integracao() {
           </span>
           <div className="text-xs text-muted-foreground">
             <p>{CATEGORY_LABEL[it.entry.category]}</p>
-            <p className="mt-1 font-medium text-primary">{statusLabel(it.entry.kind, it.entry.tag)}</p>
+            <p className="mt-1 font-medium text-slate-900">{statusLabel(it.entry.kind, it.entry.tag)}</p>
           </div>
         </div>
         <h1 className="mt-6 max-w-3xl font-serif text-4xl font-bold leading-tight tracking-tight md:text-5xl">
@@ -77,12 +77,12 @@ export default function Integracao() {
             {it.entry.note && <p className="mt-5 rounded-2xl bg-muted/50 p-4 text-sm text-muted-foreground">{it.entry.note}</p>}
           </section>
           <section className="rounded-3xl bg-primary/10 p-8 md:col-span-2">
-            <Lock className="h-5 w-5 text-primary" />
+            <Lock className="h-5 w-5 text-slate-900" />
             <h2 className="mt-4 font-serif text-xl font-bold tracking-tight">Privado por padrão</h2>
             <p className="mt-3 text-sm leading-relaxed text-foreground/80">
               Notas e transcrições são só do líder. O liderado vê apenas o que você compartilha. Dados isolados por empresa.
             </p>
-            <Link to="/confianca" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">Central de confiança <ArrowRight className="h-4 w-4" /></Link>
+            <Link to="/confianca" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-slate-900">Central de confiança <ArrowRight className="h-4 w-4" /></Link>
           </section>
         </div>
 

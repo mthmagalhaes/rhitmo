@@ -192,7 +192,7 @@ const translations = {
     newBadge: "Novo",
     // Enterprise / Corporate
     enterpriseNav: "Enterprise",
-    featuresNav: "Recursos",
+    featuresNav: "Como funciona",
     pricingNav: "Preços",
     faqNav: "FAQ",
     enterpriseSubtitle: "Para a organização inteira: HR Dashboard, blindagem jurídica, integrações HRIS e SSO.",
@@ -394,7 +394,7 @@ const translations = {
     enterpriseFloor: "Starting at 50 employees · minimum R$ 750/month",
     newBadge: "New",
     enterpriseNav: "Enterprise",
-    featuresNav: "Features",
+    featuresNav: "How it works",
     pricingNav: "Pricing",
     faqNav: "FAQ",
     enterpriseSubtitle: "For the entire organization: HR Dashboard, legal protection dossier, HRIS integration and SSO.",
@@ -1055,9 +1055,10 @@ const Landing = () => {
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
             <a href="#impacto" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.featuresNav}</a>
+            <Link to="/integracoes" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Integrações' : 'Integrations'}</Link>
+            <Link to="/blog" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Blog</Link>
             <a href="#pricing" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.pricingNav}</a>
             <a href="#faq" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.faqNav}</a>
-            <Link to="/recursos" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Recursos' : 'Resources'}</Link>
             <div className="w-px h-5 bg-slate-200 mx-2" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1107,6 +1108,8 @@ const Landing = () => {
               <SheetContent side="right" className="w-[280px] pt-12 bg-white">
                 <nav className="flex flex-col gap-2">
                   <SheetClose asChild><a href="#impacto" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.featuresNav}</a></SheetClose>
+                  <SheetClose asChild><Link to="/integracoes" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{lang === 'pt' ? 'Integrações' : 'Integrations'}</Link></SheetClose>
+                  <SheetClose asChild><Link to="/blog" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">Blog</Link></SheetClose>
                   <SheetClose asChild><a href="#pricing" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.pricingNav}</a></SheetClose>
                   <SheetClose asChild><a href="#faq" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.faqNav}</a></SheetClose>
                   <div className="h-px bg-slate-100 my-2" />
@@ -1358,7 +1361,8 @@ const Landing = () => {
 
 
       {/* ============== NUMBERS — EDITORIAL ============== */}
-      <section id="impacto" className="py-20 px-6 bg-white">
+      <span id="como-funciona" aria-hidden="true" />
+      <section id="impacto" className="py-20 px-6 bg-white scroll-mt-16">
         <div className="max-w-5xl mx-auto">
           {/* Header — alinhado à esquerda, editorial */}
           <div className="max-w-3xl mb-20">
@@ -1540,6 +1544,8 @@ const Landing = () => {
               <li><a href="#pricing" className="hover:text-slate-900 transition-colors">{t.pricingNav}</a></li>
               <li><a href="#faq" className="hover:text-slate-900 transition-colors">{t.faqNav}</a></li>
               <li><Link to="/enterprise" className="hover:text-slate-900 transition-colors">{t.enterpriseNav}</Link></li>
+              <li><Link to="/integracoes" className="hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Integrações' : 'Integrations'}</Link></li>
+              <li><Link to="/blog" className="hover:text-slate-900 transition-colors">Blog</Link></li>
               <li><Link to="/recursos" className="hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Recursos grátis' : 'Free resources'}</Link></li>
               <li><Link to="/ferramentas/gerador-avaliacao-desempenho" className="hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Gerador de avaliação' : 'Review generator'}</Link></li>
             </ul>

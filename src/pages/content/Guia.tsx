@@ -70,7 +70,7 @@ export default function Guia() {
                   <div className="mt-5 grid gap-3">
                     {s.examples.map((ex, j) => (
                       <div key={j} className="rounded-2xl bg-card p-4 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-primary">{ex.label}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-900">{ex.label}</p>
                         <p className="mt-1 text-sm leading-relaxed">{ex.text}</p>
                       </div>
                     ))}
@@ -82,7 +82,7 @@ export default function Guia() {
                       <span className="block font-semibold tracking-tight">Gerador grátis de avaliação de desempenho</span>
                       <span className="text-sm text-muted-foreground">Informe alguns fatos e receba um rascunho estruturado e sem vieses.</span>
                     </span>
-                    <ArrowRight className="h-5 w-5 shrink-0 text-primary" />
+                    <ArrowRight className="h-5 w-5 shrink-0 text-slate-900" />
                   </Link>
                 )}
               </section>

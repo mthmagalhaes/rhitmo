@@ -54,7 +54,7 @@ export default function Blog() {
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {rest.map((p) => (
             <Link key={p.slug} to={`/blog/${p.slug}`} className="flex flex-col rounded-3xl bg-card p-7 shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1">
-              <p className="text-xs font-medium text-primary">{p.category}</p>
+              <p className="text-xs font-medium text-slate-900">{p.category}</p>
               <h2 className="mt-2 font-serif text-xl font-bold leading-snug tracking-tight">{p.title}</h2>
               <p className="mt-2 flex-1 text-sm text-muted-foreground">{p.description}</p>
               <p className="mt-5 flex items-center gap-1.5 text-xs text-muted-foreground">

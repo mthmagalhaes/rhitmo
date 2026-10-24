@@ -35,21 +35,21 @@ export default function Recursos() {
             <span className="mt-6 inline-flex items-center gap-1 text-sm font-semibold">Usar agora <ArrowRight className="h-4 w-4" /></span>
           </Link>
           <Link to="/modelos/avaliacao-de-desempenho" className="rounded-3xl bg-card p-8 shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1 md:col-span-2">
-            <FileText className="h-6 w-6 text-primary" />
+            <FileText className="h-6 w-6 text-slate-900" />
             <p className="mt-6 text-xs uppercase tracking-[0.18em] text-muted-foreground">Modelo para baixar</p>
             <h2 className="mt-2 font-serif text-2xl font-bold tracking-tight">Modelo de avaliação de desempenho</h2>
             <p className="mt-3 text-sm text-muted-foreground">Com roteiro de 1:1 de bônus.</p>
           </Link>
         </div>
 
-        <h2 className="mt-16 flex items-center gap-2 font-serif text-2xl font-bold tracking-tight"><BookOpen className="h-5 w-5 text-primary" /> Guias</h2>
+        <h2 className="mt-16 flex items-center gap-2 font-serif text-2xl font-bold tracking-tight"><BookOpen className="h-5 w-5 text-slate-900" /> Guias</h2>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           {GUIDES.map((g) => (
             <Link key={g.slug} to={`/guias/${g.slug}`} className="flex flex-col rounded-3xl bg-card p-6 shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{g.readingMinutes} min</p>
               <h3 className="mt-2 font-serif text-lg font-bold leading-snug tracking-tight">{g.title}</h3>
               <p className="mt-2 flex-1 text-sm text-muted-foreground">{g.description}</p>
-              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">Ler guia <ArrowRight className="h-4 w-4" /></span>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-slate-900">Ler guia <ArrowRight className="h-4 w-4" /></span>
             </Link>
           ))}
         </div>
