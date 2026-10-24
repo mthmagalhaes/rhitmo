@@ -74,6 +74,8 @@ export function ContentLayout({ children }: { children: ReactNode }) {
               <li><Link to="/modelos/avaliacao-de-desempenho" className="hover:text-slate-900">Modelo de avaliação</Link></li>
               <li><Link to="/confianca" className="hover:text-slate-900">Confiança</Link></li>
               <li><Link to="/privacy-policy" className="hover:text-slate-900">Privacidade</Link></li>
+              <li><Link to="/terms-of-service" className="hover:text-slate-900">Termos de Serviço</Link></li>
+              <li><Link to="/auth" className="hover:text-slate-900">Já tem conta? Entrar</Link></li>
             </ul>
           </div>
         </div>
