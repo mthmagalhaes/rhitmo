@@ -57,6 +57,7 @@ import {
   BlogPost,
   ModeloAvaliacao,
   GeradorAvaliacao,
+  CalculadoraCusto,
   ResetPassword,
   GoogleCalendarCallback,
   SlackChannels,
@@ -236,6 +237,7 @@ const App = () => (
               <Route path="/blog/:slug" element={Public(<BlogPost />)} />
               <Route path="/modelos/avaliacao-de-desempenho" element={Public(<ModeloAvaliacao />)} />
               <Route path="/ferramentas/gerador-avaliacao-desempenho" element={Public(<GeradorAvaliacao />)} />
+              <Route path="/ferramentas/calculadora-custo-avaliacao" element={Public(<CalculadoraCusto />)} />
               <Route path="/reset-password" element={Public(<ResetPassword />)} />
               <Route path="/auth/google/callback" element={Public(<GoogleCalendarCallback />)} />
 

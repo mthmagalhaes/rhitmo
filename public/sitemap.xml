@@ -66,6 +66,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://rhitmo.co/ferramentas/calculadora-custo-avaliacao</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://rhitmo.co/integracoes</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

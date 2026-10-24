@@ -1054,7 +1054,7 @@ const Landing = () => {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
-            <a href="#impacto" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.featuresNav}</a>
+            <a href="#como-funciona" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.featuresNav}</a>
             <Link to="/integracoes" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Integrações' : 'Integrations'}</Link>
             <Link to="/blog" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Blog</Link>
             <a href="#pricing" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.pricingNav}</a>
@@ -1107,7 +1107,7 @@ const Landing = () => {
               </SheetTrigger>
               <SheetContent side="right" className="w-[280px] pt-12 bg-white">
                 <nav className="flex flex-col gap-2">
-                  <SheetClose asChild><a href="#impacto" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.featuresNav}</a></SheetClose>
+                  <SheetClose asChild><a href="#como-funciona" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.featuresNav}</a></SheetClose>
                   <SheetClose asChild><Link to="/integracoes" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{lang === 'pt' ? 'Integrações' : 'Integrations'}</Link></SheetClose>
                   <SheetClose asChild><Link to="/blog" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">Blog</Link></SheetClose>
                   <SheetClose asChild><a href="#pricing" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.pricingNav}</a></SheetClose>
@@ -1301,7 +1301,7 @@ const Landing = () => {
               {lang === 'pt' ? 'Toda história merece ser lembrada.' : 'Every story deserves to be remembered.'}
             </h2>
             <a
-              href="#impacto"
+              href="#como-funciona"
               className="mt-10 inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md border border-white/25 px-6 py-3 text-sm font-medium text-white hover:bg-white/20 transition-colors"
             >
               {lang === 'pt' ? 'Veja como funciona' : 'See how it works'}
@@ -1311,6 +1311,7 @@ const Landing = () => {
         </div>
       </section>
 
+      <span id="como-funciona" aria-hidden="true" className="block scroll-mt-16" />
       {/* ============== MEET ANA — JOURNEY ============== */}
       <SarahJourneySection
         lang={lang}
@@ -1361,7 +1362,6 @@ const Landing = () => {
 
 
       {/* ============== NUMBERS — EDITORIAL ============== */}
-      <span id="como-funciona" aria-hidden="true" />
       <section id="impacto" className="py-20 px-6 bg-white scroll-mt-16">
         <div className="max-w-5xl mx-auto">
           {/* Header — alinhado à esquerda, editorial */}
@@ -1540,7 +1540,7 @@ const Landing = () => {
           <div>
             <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-900 mb-5">{lang === 'pt' ? 'Produto' : 'Product'}</h4>
             <ul className="space-y-3 text-sm text-slate-500">
-              <li><a href="#impacto" className="hover:text-slate-900 transition-colors">{t.featuresNav}</a></li>
+              <li><a href="#como-funciona" className="hover:text-slate-900 transition-colors">{t.featuresNav}</a></li>
               <li><a href="#pricing" className="hover:text-slate-900 transition-colors">{t.pricingNav}</a></li>
               <li><a href="#faq" className="hover:text-slate-900 transition-colors">{t.faqNav}</a></li>
               <li><Link to="/enterprise" className="hover:text-slate-900 transition-colors">{t.enterpriseNav}</Link></li>

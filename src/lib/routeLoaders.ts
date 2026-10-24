@@ -92,6 +92,7 @@ export const Blog = lazy(() => import('@/pages/content/Blog'));
 export const BlogPost = lazy(() => import('@/pages/content/BlogPost'));
 export const ModeloAvaliacao = lazy(() => import('@/pages/content/ModeloAvaliacao'));
 export const GeradorAvaliacao = lazy(() => import('@/pages/content/GeradorAvaliacao'));
+export const CalculadoraCusto = lazy(() => import('@/pages/content/CalculadoraCusto'));
 export const ResetPassword = lazy(loadResetPassword);
 export const GoogleCalendarCallback = lazy(loadGoogleCalendarCallback);
 

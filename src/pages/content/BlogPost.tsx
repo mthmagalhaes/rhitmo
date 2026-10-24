@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowRight, Clock } from 'lucide-react';
 import { ContentLayout, TrialCta } from '@/components/content/ContentLayout';
-import { POSTS, formatPostDate, postBySlug } from '@/content/blog';
+import { POSTS, postBySlug } from '@/content/blog';
 
 const slugify = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
@@ -39,7 +39,7 @@ export default function BlogPost() {
         <h1 className="mt-6 max-w-3xl font-serif text-4xl font-bold leading-tight tracking-tight md:text-5xl">{post.title}</h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">{post.description}</p>
         <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
-          {post.author} · {formatPostDate(post.date)} · <Clock className="h-3.5 w-3.5" /> {post.readingMinutes} min de leitura
+          {post.author} · <Clock className="h-3.5 w-3.5" /> {post.readingMinutes} min de leitura
         </p>
 
         <div className="mt-12 grid gap-12 lg:grid-cols-[220px_1fr]">

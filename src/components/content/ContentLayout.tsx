@@ -4,7 +4,7 @@ import { Menu } from 'lucide-react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
-export const TRIAL_URL = '/auth?mode=signup&utm_source=content&utm_medium=organic';
+export const TRIAL_URL = '/auth/start?utm_source=content&utm_medium=organic';
 
 const NAV: { label: string; to: string }[] = [
   { label: 'Como funciona', to: '/#como-funciona' },
@@ -70,6 +70,7 @@ export function ContentLayout({ children }: { children: ReactNode }) {
             <ul className="space-y-3 text-sm text-slate-500">
               <li><Link to="/recursos" className="hover:text-slate-900">Guias</Link></li>
               <li><Link to="/ferramentas/gerador-avaliacao-desempenho" className="hover:text-slate-900">Gerador de avaliação</Link></li>
+              <li><Link to="/ferramentas/calculadora-custo-avaliacao" className="hover:text-slate-900">Calculadora de custo</Link></li>
               <li><Link to="/modelos/avaliacao-de-desempenho" className="hover:text-slate-900">Modelo de avaliação</Link></li>
               <li><Link to="/confianca" className="hover:text-slate-900">Confiança</Link></li>
               <li><Link to="/privacy-policy" className="hover:text-slate-900">Privacidade</Link></li>
