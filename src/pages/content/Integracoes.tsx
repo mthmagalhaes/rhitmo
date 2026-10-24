@@ -52,7 +52,7 @@ export default function Integracoes() {
             {filters.map((f) => (
               <button key={f.id} onClick={() => setFilter(f.id)}
                 className={cn('rounded-xl px-4 py-2 text-sm font-medium transition-colors',
-                  filter === f.id ? 'bg-foreground text-background' : 'bg-muted/50 text-muted-foreground hover:text-foreground')}>
+                  filter === f.id ? 'bg-slate-900 text-white' : 'bg-muted/50 text-muted-foreground hover:text-foreground')}>
                 {f.label}
               </button>
             ))}
@@ -77,7 +77,7 @@ export default function Integracoes() {
               <p className="mt-5 font-semibold tracking-tight">{i.entry.label}</p>
               <p className="mt-1 flex-1 text-sm text-muted-foreground">{i.entry.tagline}</p>
               <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-medium">
-                <span className={cn('rounded-full px-2.5 py-1', i.entry.kind === 'coming_soon' ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary')}>
+                <span className={cn('rounded-full px-2.5 py-1', i.entry.kind === 'coming_soon' ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-slate-900')}>
                   {statusLabel(i.entry.kind, i.entry.tag)}
                 </span>
                 {i.entry.savesBotHours && <span className="rounded-full bg-muted px-2.5 py-1 text-muted-foreground">Sem bot na reunião</span>}

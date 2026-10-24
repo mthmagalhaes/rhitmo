@@ -60,7 +60,7 @@ export function LeadGate({
         <Input required type="email" placeholder="E-mail de trabalho" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl" aria-label="E-mail" />
         <Input placeholder="Empresa" value={company} onChange={(e) => setCompany(e.target.value)} className="rounded-xl" aria-label="Empresa" />
       </div>
-      <Button type="submit" disabled={loading} className="mt-4 w-full rounded-xl sm:w-auto">
+      <Button type="submit" disabled={loading} className="mt-4 w-full rounded-full bg-slate-900 text-white hover:bg-slate-800 sm:w-auto">
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {cta}
       </Button>
       <p className="mt-3 text-xs text-muted-foreground">

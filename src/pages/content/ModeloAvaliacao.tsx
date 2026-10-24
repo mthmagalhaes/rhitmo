@@ -100,10 +100,10 @@ export default function ModeloAvaliacao() {
             <h2 className="font-serif text-2xl font-bold tracking-tight">Avaliação de desempenho</h2>
             {unlocked && (
               <div className="flex gap-2 print:hidden">
-                <Button size="sm" variant="outline" className="rounded-xl" onClick={() => { navigator.clipboard.writeText(toText([...PREVIEW, ...FULL])); toast({ title: 'Modelo copiado' }); }}>
+                <Button size="sm" variant="outline" className="rounded-full" onClick={() => { navigator.clipboard.writeText(toText([...PREVIEW, ...FULL])); toast({ title: 'Modelo copiado' }); }}>
                   <Copy className="mr-1 h-4 w-4" /> Copiar
                 </Button>
-                <Button size="sm" className="rounded-xl" onClick={() => window.print()}><Printer className="mr-1 h-4 w-4" /> Baixar PDF</Button>
+                <Button size="sm" className="rounded-full bg-slate-900 text-white hover:bg-slate-800" onClick={() => window.print()}><Printer className="mr-1 h-4 w-4" /> Baixar PDF</Button>
               </div>
             )}
           </div>

@@ -90,7 +90,7 @@ export default function GeradorAvaliacao() {
               ))}
             </div>
             {facts.length < 5 && (
-              <button type="button" onClick={() => setFacts([...facts, ''])} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary"><Plus className="h-4 w-4" /> Adicionar fato</button>
+              <button type="button" onClick={() => setFacts([...facts, ''])} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-slate-900"><Plus className="h-4 w-4" /> Adicionar fato</button>
             )}
           </div>
           <div>
@@ -98,13 +98,13 @@ export default function GeradorAvaliacao() {
             <div className="mt-2 flex flex-wrap gap-2">
               {TONES.map((t) => (
                 <button key={t.id} type="button" onClick={() => setTone(t.id)}
-                  className={cn('rounded-full px-4 py-2 text-sm font-medium transition-colors', tone === t.id ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground')}>
+                  className={cn('rounded-full px-4 py-2 text-sm font-medium transition-colors', tone === t.id ? 'bg-slate-900 text-white' : 'bg-muted text-muted-foreground hover:text-foreground')}>
                   {t.label}
                 </button>
               ))}
             </div>
           </div>
-          <Button type="submit" size="lg" disabled={loading} className="w-full rounded-xl">
+          <Button type="submit" size="lg" disabled={loading} className="w-full rounded-full bg-slate-900 text-white hover:bg-slate-800">
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
             {loading ? 'Escrevendo...' : 'Gerar rascunho'}
           </Button>
@@ -116,7 +116,7 @@ export default function GeradorAvaliacao() {
               <div className="flex items-center justify-between gap-3">
                 <h2 className="font-serif text-2xl font-bold tracking-tight">Seu rascunho</h2>
                 {unlocked && (
-                  <Button size="sm" variant="outline" className="rounded-xl" onClick={() => { navigator.clipboard.writeText(draft); toast({ title: 'Copiado' }); }}>
+                  <Button size="sm" variant="outline" className="rounded-full" onClick={() => { navigator.clipboard.writeText(draft); toast({ title: 'Copiado' }); }}>
                     <Copy className="mr-1 h-4 w-4" /> Copiar
                   </Button>
                 )}
