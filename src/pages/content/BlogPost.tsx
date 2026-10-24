@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowRight, Clock } from 'lucide-react';
 import { ContentLayout, TrialCta } from '@/components/content/ContentLayout';
-import { POSTS, formatPostDate, postBySlug } from '@/content/blog';
+import { POSTS, postBySlug } from '@/content/blog';
 
 const slugify = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 

@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { ContentLayout, TrialCta } from '@/components/content/ContentLayout';
-import { BLOG_CATEGORIES, POSTS, formatPostDate, type BlogCategory } from '@/content/blog';
+import { BLOG_CATEGORIES, POSTS, type BlogCategory } from '@/content/blog';
 import { cn } from '@/lib/utils';
 
 const URL = 'https://rhitmo.co/blog';
