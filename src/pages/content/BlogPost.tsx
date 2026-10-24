@@ -1,6 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ArrowRight, Clock } from 'lucide-react';
+import { ArrowRight, Calculator, Clock } from 'lucide-react';
+import { capture } from '@/lib/productAnalytics';
 import { ContentLayout, TrialCta } from '@/components/content/ContentLayout';
 import { POSTS, postBySlug } from '@/content/blog';
 
@@ -78,6 +79,20 @@ export default function BlogPost() {
                 <ArrowRight className="h-5 w-5 shrink-0" />
               </Link>
             )}
+
+            <Link
+              to="/ferramentas/calculadora-custo-avaliacao"
+              onClick={() => capture('blog_calculator_cta_clicked', { slug: post.slug })}
+              className="flex items-center gap-4 rounded-3xl bg-card p-6 shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1"
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10"><Calculator className="h-5 w-5" /></span>
+              <span className="flex-1">
+                <span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ferramenta grátis</span>
+                <span className="block font-semibold tracking-tight">Quanto custa o ciclo de avaliação do seu time?</span>
+                <span className="block text-sm text-muted-foreground">Simule horas e custo por ano com a conta à vista.</span>
+              </span>
+              <ArrowRight className="h-5 w-5 shrink-0" />
+            </Link>
           </div>
         </div>
 
