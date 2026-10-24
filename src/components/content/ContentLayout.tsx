@@ -4,7 +4,7 @@ import { Menu } from 'lucide-react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
-export const TRIAL_URL = '/auth?mode=signup&utm_source=content&utm_medium=organic';
+export const TRIAL_URL = '/auth/start?utm_source=content&utm_medium=organic';
 
 const NAV: { label: string; to: string }[] = [
   { label: 'Como funciona', to: '/#como-funciona' },

@@ -47,7 +47,7 @@ export default function Blog() {
             <p className="text-xs uppercase tracking-[0.18em] opacity-70">Destaque · {featured.category}</p>
             <h2 className="mt-3 max-w-3xl font-serif text-3xl font-bold leading-tight tracking-tight md:text-4xl">{featured.title}</h2>
             <p className="mt-4 max-w-2xl opacity-80">{featured.description}</p>
-            <p className="mt-6 text-xs opacity-70">{featured.author} · {formatPostDate(featured.date)} · {featured.readingMinutes} min</p>
+            <p className="mt-6 text-xs opacity-70">{featured.author} · {featured.readingMinutes} min</p>
           </Link>
         )}
 
@@ -58,7 +58,7 @@ export default function Blog() {
               <h2 className="mt-2 font-serif text-xl font-bold leading-snug tracking-tight">{p.title}</h2>
               <p className="mt-2 flex-1 text-sm text-muted-foreground">{p.description}</p>
               <p className="mt-5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                {formatPostDate(p.date)} · <Clock className="h-3 w-3" /> {p.readingMinutes} min
+                <Clock className="h-3 w-3" /> {p.readingMinutes} min
               </p>
             </Link>
           ))}
