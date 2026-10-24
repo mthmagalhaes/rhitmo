@@ -1548,6 +1548,8 @@ const Landing = () => {
               <li><Link to="/blog" className="hover:text-slate-900 transition-colors">Blog</Link></li>
               <li><Link to="/recursos" className="hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Recursos grátis' : 'Free resources'}</Link></li>
               <li><Link to="/ferramentas/gerador-avaliacao-desempenho" className="hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Gerador de avaliação' : 'Review generator'}</Link></li>
+              <li><Link to="/ferramentas/calculadora-custo-avaliacao" className="hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Calculadora de custo' : 'Cost calculator'}</Link></li>
+              <li><Link to="/modelos/avaliacao-de-desempenho" className="hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Modelo de avaliação' : 'Review template'}</Link></li>
             </ul>
           </div>
           <div>
