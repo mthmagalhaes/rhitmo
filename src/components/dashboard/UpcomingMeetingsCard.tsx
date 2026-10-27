@@ -294,7 +294,9 @@ export const UpcomingMeetingsCard = () => {
               />
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              O bot entra sozinho nas suas 1:1s da agenda.
+              {autoTranscribe
+                ? 'O bot entra sozinho nas suas 1:1s da agenda.'
+                : 'Desligada: o bot não vai entrar sozinho. Ligue para ele entrar nas suas 1:1s.'}
             </p>
           </div>
         </div>

@@ -108,7 +108,7 @@ const leaderCards: FeatureCard[] = [
     title: 'Reuniões 1:1',
     subtitle: 'Prepare-se para 1:1s com briefings automáticos',
     steps: [
-      'Conecte seu Google Calendar em Configurações → Integrações.',
+      'Conecte seu Google Calendar no card "Próximas 1:1s" da Início ou em Conectores.',
       'O Rhitmo detecta reuniões 1:1 e associa ao membro correto.',
       'Antes da reunião, um briefing IA é gerado com resumo de notas recentes.',
       'Após a reunião, registre suas observações em Anotações & Evidências.',
@@ -146,12 +146,12 @@ const leaderCards: FeatureCard[] = [
     title: 'Conectar sua agenda',
     subtitle: 'Passo a passo do Google Calendar no Rhitmo',
     steps: [
-      'Vá em Início e clique em "Conectar" no card "Conectar Google Calendar". Você também pode ir em Configurações → Integrações → Google Calendar → Conectar.',
+      'Vá em Início e clique em "Conectar" no card "Conectar Google Calendar". Você também pode ir em Conectores → Google Agenda → Conectar.',
       'O Google vai pedir permissão de leitura da sua agenda. O Rhitmo usa isso apenas para identificar suas 1:1s e o link da videochamada. Nada é criado, editado ou apagado na sua agenda.',
       'Deu certo quando o card fica verde e mostra o e-mail conectado.',
       'A partir daí a agenda sincroniza sozinha a cada 15 minutos e suas 1:1s aparecem no card "Próximas 1:1s" na Início.',
       'Antes de cada 1:1, a Rhitmo prepara um brief com o contexto recente daquele liderado.',
-      'Para desconectar, volte em Configurações → Integrações e clique em "Desconectar". As notas já registradas continuam em Anotações & Evidências.',
+      'Para desconectar, vá em Conectores → Google Agenda e clique em "Desconectar". As notas já registradas continuam em Anotações & Evidências.',
     ],
   },
   {
@@ -161,9 +161,9 @@ const leaderCards: FeatureCard[] = [
     subtitle: 'Como o bot da Rhitmo participa das suas reuniões',
     steps: [
       'Pré-requisito: agenda conectada (veja "Conectar sua agenda").',
-      'Ative o toggle "Transcrição Automática" no card "Próximas 1:1s".',
+      'Importante: ligue a chave "Transcrição automática" no card "Próximas 1:1s" da Início. Sem ela, o bot não entra sozinho.',
       'O bot entra por volta de 2 minutos antes do horário e aparece na sala como um participante chamado "Rhitmo".',
-      'Se a reunião tiver sala de espera, alguém precisa admitir o bot. Ele aguarda até 10 minutos.',
+      'Se a reunião tiver sala de espera, alguém precisa admitir o bot. Ele aguarda alguns minutos antes de desistir.',
       'Funciona com links de Google Meet, Zoom e Teams presentes no evento da agenda.',
       'Ao fim, a transcrição com os nomes dos participantes vira uma nova entrada em Anotações & Evidências de cada liderado presente.',
       'A IA gera resumo, tópicos, sentimento e coaching tips em cima dessa transcrição.',
@@ -330,7 +330,7 @@ const faqItems = [
   },
   {
     q: 'O bot não entrou na minha reunião',
-    a: 'Confira nesta ordem: agenda conectada em Configurações → Integrações, toggle "Transcrição Automática" ativo, e o evento com link de videochamada. Se estiver tudo certo e o bot não apareceu, clique no ícone de microfone ("Chamar bot agora") no card "Próximas 1:1s". Funciona mesmo com a reunião já em andamento, inclusive 15 minutos depois de começar.',
+    a: 'Confira nesta ordem: agenda conectada (Conectores → Google Agenda), chave "Transcrição automática" ligada no card "Próximas 1:1s", e o evento com link de videochamada. Se estiver tudo certo e o bot não apareceu, clique no ícone de microfone ("Chamar bot agora") no card "Próximas 1:1s". Funciona mesmo com a reunião já em andamento, inclusive 15 minutos depois de começar.',
   },
   {
     q: 'O bot ficou parado na sala de espera',
