@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { Clock } from 'lucide-react';
+import { Clock, Calculator, ArrowRight } from 'lucide-react';
+import { capture } from '@/lib/productAnalytics';
 import { ContentLayout, TrialCta } from '@/components/content/ContentLayout';
 import { BLOG_CATEGORIES, POSTS, type BlogCategory } from '@/content/blog';
 import { cn } from '@/lib/utils';
@@ -32,7 +33,16 @@ export default function Blog() {
         <h1 className="mt-2 max-w-3xl font-serif text-4xl font-bold leading-tight tracking-tight md:text-5xl">Liderança com menos improviso</h1>
         <p className="mt-5 max-w-2xl text-lg text-muted-foreground">{DESC}</p>
 
-        <div className="mt-10 flex flex-wrap gap-2">
+        <Link to="/ferramentas/calculadora-custo-avaliacao" onClick={() => capture('blog_list_calculator_cta_clicked')} className="mt-8 flex items-center gap-4 rounded-3xl bg-card p-6 shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-muted"><Calculator className="h-5 w-5 text-foreground" /></span>
+          <span className="flex-1">
+            <span className="block font-serif text-lg font-bold tracking-tight">Quanto custa o ciclo de avaliação do seu time?</span>
+            <span className="block text-sm text-muted-foreground">Calculadora grátis, com os seus números.</span>
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </Link>
+
+        <div className="mt-8 flex flex-wrap gap-2">
           {(['all', ...BLOG_CATEGORIES] as const).map((c) => (
             <button key={c} onClick={() => setCat(c)}
               className={cn('rounded-xl px-4 py-2 text-sm font-medium transition-colors',
