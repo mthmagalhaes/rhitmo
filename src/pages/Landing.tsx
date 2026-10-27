@@ -45,6 +45,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
+import { capture } from "@/lib/productAnalytics";
 
 // ============== TRANSLATIONS ==============
 
@@ -1057,6 +1058,7 @@ const Landing = () => {
             <a href="#como-funciona" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.featuresNav}</a>
             <Link to="/integracoes" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Integrações' : 'Integrations'}</Link>
             <Link to="/blog" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Blog</Link>
+            <Link to="/ferramentas/calculadora-custo-avaliacao" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Calculadora' : 'Calculator'}</Link>
             <a href="#pricing" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.pricingNav}</a>
             <a href="#faq" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.faqNav}</a>
             <div className="w-px h-5 bg-slate-200 mx-2" />
@@ -1110,6 +1112,7 @@ const Landing = () => {
                   <SheetClose asChild><a href="#como-funciona" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.featuresNav}</a></SheetClose>
                   <SheetClose asChild><Link to="/integracoes" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{lang === 'pt' ? 'Integrações' : 'Integrations'}</Link></SheetClose>
                   <SheetClose asChild><Link to="/blog" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">Blog</Link></SheetClose>
+                  <SheetClose asChild><Link to="/ferramentas/calculadora-custo-avaliacao" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{lang === 'pt' ? 'Calculadora' : 'Calculator'}</Link></SheetClose>
                   <SheetClose asChild><a href="#pricing" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.pricingNav}</a></SheetClose>
                   <SheetClose asChild><a href="#faq" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.faqNav}</a></SheetClose>
                   <div className="h-px bg-slate-100 my-2" />
@@ -1426,6 +1429,18 @@ const Landing = () => {
           </div>
         </div>
       </section>
+      {lang === 'pt' && (
+        <section className="px-6 pb-20 bg-white">
+          <Link to="/ferramentas/calculadora-custo-avaliacao" onClick={() => capture('landing_calculator_cta_clicked')} className="mx-auto flex max-w-5xl flex-col gap-4 rounded-3xl bg-slate-50 p-8 shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Calculadora grátis</p>
+              <h3 className="mt-2 font-serif text-2xl font-bold tracking-tight text-slate-900">Quanto custa o ciclo de avaliação do seu time?</h3>
+              <p className="mt-1 text-sm text-slate-500">Simule em 1 minuto, com os seus números e a conta à vista.</p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white">Simular agora <ArrowRight className="h-4 w-4" /></span>
+          </Link>
+        </section>
+      )}
 
 
 
