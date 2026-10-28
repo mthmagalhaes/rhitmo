@@ -153,7 +153,7 @@ export default function V2Billing() {
             <span>
               {billing.trialActive
                 ? 'Tudo liberado durante o teste, sem cartão. Assine quando quiser para não perder o ritmo.'
-                          : !billing.trialEndsAt ? 'Mensal ou anual, cancele quando quiser. Depois de assinar, tudo fica liberado na hora.'
+                          : !billing.trialEndsAt ? 'Mensal ou anual, cancele quando quiser, com garantia de 7 dias. Depois de assinar, tudo fica liberado na hora.'
                 : 'A leitura continua liberada, mas criar liderado, enviar o bot, gerar avaliação e perguntar à Rhitmo pedem assinatura.'}
             </span>
             <Button

@@ -97,7 +97,7 @@ export function SignupCta({ title, body }: { title?: string; body?: string }) {
         {body ?? 'A Rhitmo importa as notas das suas 1:1s, organiza por pessoa e prepara pauta e rascunho de avaliação com a fonte de cada frase.'}
       </p>
       <Link to={TRIAL_URL} className="mt-6 inline-flex items-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100">
-        Assinar agora, cancele quando quiser
+        Assinar agora · garantia de 7 dias, cancele quando quiser
       </Link>
     </section>
   );
