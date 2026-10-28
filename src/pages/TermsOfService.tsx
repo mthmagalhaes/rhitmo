@@ -85,7 +85,7 @@ const TermsOfService = () => {
         </ul>
 
         <h3 className="text-xl font-medium mt-6 mb-3">3.2 Período de Teste</h3>
-        <p>O plano Pro oferece 14 dias de teste gratuito apenas no ciclo trimestral para novos usuários. Após o período de teste, o cartão de crédito cadastrado será cobrado automaticamente, a menos que a assinatura seja cancelada antes do término do trial.</p>
+        <p>A assinatura é paga desde o início, nos ciclos mensal ou anual. Não há período de teste gratuito. Você pode cancelar a qualquer momento pelo portal de cobrança; o acesso continua até o fim do período já pago.</p>
 
         <h3 className="text-xl font-medium mt-6 mb-3">3.3 Cobrança e Renovação</h3>
         <p>Não oferecemos plano mensal. As assinaturas Pro são cobradas em ciclos de 3, 6 ou 12 meses, de forma recorrente. O valor é debitado automaticamente no início de cada ciclo. A escolha de ciclos mais longos reflete o tempo necessário para que mudanças de comportamento de liderança se consolidem (mínimo de 90 dias). Você é responsável por manter seus dados de pagamento atualizados.</p>
