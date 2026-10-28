@@ -164,7 +164,7 @@ const leaderCards: FeatureCard[] = [
       'Importante: ligue a chave "Transcrição automática" no card "Próximas 1:1s" da Início. Sem ela, o bot não entra sozinho.',
       'O bot entra por volta de 2 minutos antes do horário e aparece na sala como um participante chamado "Rhitmo".',
       'Se a reunião tiver sala de espera, alguém precisa admitir o bot. Ele aguarda alguns minutos antes de desistir.',
-      'Funciona com links de Google Meet, Zoom e Teams presentes no evento da agenda.',
+      'Funciona com links de Google Meet, Zoom e Teams presentes no evento da agenda. Eventos de dia inteiro e compromissos sem link de vídeo não aparecem na lista.',
       'Ao fim, a transcrição com os nomes dos participantes vira uma nova entrada em Anotações & Evidências de cada liderado presente.',
       'A IA gera resumo, tópicos, sentimento e coaching tips em cima dessa transcrição.',
       'Você pode chamar o bot manualmente a qualquer momento no ícone de microfone do card "Próximas 1:1s", inclusive com a reunião já em andamento.',
