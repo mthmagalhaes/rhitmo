@@ -43,7 +43,7 @@ export const UpcomingMeetingsCard = () => {
   const {
     isConnected,
     checkingConnection,
-    upcomingMeetings,
+    upcomingMeetings: allUpcomingMeetings,
     loadingMeetings,
     isSyncing,
     isSyncError,
@@ -65,6 +65,8 @@ export const UpcomingMeetingsCard = () => {
   const [schedulingMeetingId, setSchedulingMeetingId] = useState<string | null>(null);
   const [dismissingBotId, setDismissingBotId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  // Só reuniões com link de vídeo aparecem (lembretes sem link ficam de fora).
+  const upcomingMeetings = (allUpcomingMeetings ?? []).filter((m) => !!m.meet_link);
   const { toast } = useToast();
   const billingGate = useBillingGate();
 
@@ -600,11 +602,10 @@ export const UpcomingMeetingsCard = () => {
         })}
       </div>
 
-      {upcomingMeetings.some((m) => m.meeting_type === 'team') && (
-        <p className="mt-3 px-1 text-[11px] text-muted-foreground">
-          Reuniões de equipe precisam ser ativadas uma a uma.
-        </p>
-      )}
+      <p className="mt-3 px-1 text-[11px] text-muted-foreground">
+        {upcomingMeetings.some((m) => m.meeting_type === 'team') && 'Reuniões de equipe precisam ser ativadas uma a uma. '}
+        Mostramos só reuniões com link de Meet, Zoom ou Teams.
+      </p>
 
       {hasMore && (
         <button

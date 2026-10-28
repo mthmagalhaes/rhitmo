@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkV3BotEntitlement } from "../_shared/botEntitlement.ts";
+import { isAllDayEvent } from "./allDay.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -282,6 +283,7 @@ Deno.serve(async (req) => {
     let eventsSkippedNoMatch = 0;
     let eventsSkippedGroup = 0;
     let eventsSkippedMultipleMembers = 0;
+    let eventsSkippedAllDay = 0;
 
     for (const event of allEvents) {
       // Skip eventos cancelados/declinados pelo organizador.
@@ -303,6 +305,12 @@ Deno.serve(async (req) => {
       const endObj = event.end as { dateTime?: string; date?: string } | undefined;
       const startTime = startObj?.dateTime || startObj?.date;
       const endTime = endObj?.dateTime || endObj?.date;
+
+      // Eventos de dia inteiro (lembretes, feriados) não são reuniões: ignora.
+      if (isAllDayEvent(startObj)) {
+        eventsSkippedAllDay++;
+        continue;
+      }
 
       if (!startTime) continue;
 
@@ -439,7 +447,7 @@ Deno.serve(async (req) => {
 
 
 
-    console.log(`[sync] Results: ${matchedMeetings.length} matched, ${eventsSkippedNoAttendees} no attendees, ${eventsSkippedNoMatch} no member match, ${eventsSkippedGroup} group, ${eventsSkippedMultipleMembers} multi-member`);
+    console.log(`[sync] Results: ${matchedMeetings.length} matched, ${eventsSkippedNoAttendees} no attendees, ${eventsSkippedNoMatch} no member match, ${eventsSkippedGroup} group, ${eventsSkippedMultipleMembers} multi-member, ${eventsSkippedAllDay} all-day`);
 
     // ── Varredura de bots obsoletos ──
     // Bot agendado sob regras antigas (ou antes de o líder desligar o opt-in)
