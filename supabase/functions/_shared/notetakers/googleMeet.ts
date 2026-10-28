@@ -77,15 +77,35 @@ export const googleMeetProvider: NoteTakerProvider = {
 
   // Cada transcrição pronta vira uma "nota". id = nome do recurso do transcript.
   async listNotes(token, opts) {
-    const since = opts.createdAfter ?? new Date(Date.now() - 14 * 86400_000).toISOString();
+    // O Google exige que a página 2+ use exatamente o mesmo filtro da página 1.
+    // Sem watermark, a janela era recalculada com Date.now() a cada página e o
+    // token virava inválido. Por isso o cursor carrega a janela original.
+    let since = opts.createdAfter ?? new Date(Date.now() - 14 * 86400_000).toISOString();
+    let pageToken: string | undefined;
+    if (opts.cursor) {
+      try {
+        const c = JSON.parse(opts.cursor) as { t: string; s: string };
+        pageToken = c.t;
+        since = c.s;
+      } catch {
+        pageToken = opts.cursor;
+      }
+    }
     const params: Record<string, string> = {
       pageSize: String(Math.min(opts.limit ?? 20, 50)),
       filter: `start_time>="${since}"`,
     };
-    if (opts.cursor) params.pageToken = opts.cursor;
-    const page = await meetGet<{ conferenceRecords?: ConferenceRecord[]; nextPageToken?: string }>(
-      token, "conferenceRecords", params,
-    );
+    if (pageToken) params.pageToken = pageToken;
+    let page: { conferenceRecords?: ConferenceRecord[]; nextPageToken?: string };
+    try {
+      page = await meetGet(token, "conferenceRecords", params);
+    } catch (e) {
+      // Token de página expirado/inválido: encerra a paginação sem quebrar o sync.
+      if (pageToken && /page_token/i.test((e as Error).message)) {
+        return { notes: [], hasMore: false, cursor: null };
+      }
+      throw e;
+    }
     const notes = [];
     for (const rec of page.conferenceRecords ?? []) {
       if (!rec.endTime) continue; // reunião ainda em andamento
@@ -95,7 +115,8 @@ export const googleMeetProvider: NoteTakerProvider = {
         notes.push({ id: t.name, title: null, createdAt: toIsoOrNull(rec.startTime ?? t.startTime) });
       }
     }
-    return { notes, hasMore: !!page.nextPageToken, cursor: page.nextPageToken ?? null };
+    const next = page.nextPageToken ? JSON.stringify({ t: page.nextPageToken, s: since }) : null;
+    return { notes, hasMore: !!next, cursor: next };
   },
 
   async getNote(token, transcriptName) {
