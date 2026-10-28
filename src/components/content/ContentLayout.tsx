@@ -45,7 +45,7 @@ export function ContentLayout({ children }: { children: ReactNode }) {
                 <div className="my-2 h-px bg-slate-100" />
                 <SheetClose asChild><Link to="/auth" className="rounded-lg px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50">Entrar</Link></SheetClose>
                 <SheetClose asChild>
-                  <Link to={TRIAL_URL} className="mt-2 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white">Começar teste grátis</Link>
+                  <Link to={TRIAL_URL} className="mt-2 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white">Assinar agora</Link>
                 </SheetClose>
               </nav>
             </SheetContent>
