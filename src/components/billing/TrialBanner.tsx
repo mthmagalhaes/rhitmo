@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useBillingStatus } from '@/hooks/useBillingStatus';
 import { cn } from '@/lib/utils';
 
-/** Faixa do teste de 14 dias: dias restantes e atalho para assinar. */
+/** Faixa de assinatura (teste legado ou conta nova sem plano): dias restantes e atalho para assinar. */
 export function TrialBanner() {
   const { data } = useBillingStatus();
   const navigate = useNavigate();
@@ -26,8 +26,8 @@ export function TrialBanner() {
         <span>
           {data.locked ? (
             <>
-              Seu teste terminou. A leitura continua, mas criar liderado, enviar o bot, gerar
-              avaliação e perguntar à Rhitmo pedem assinatura.
+              {data.trialEndsAt ? 'Seu teste terminou.' : 'Escolha seu plano, mensal ou anual, para começar.'}{' '}
+              Criar liderado, enviar o bot, gerar avaliação e perguntar à Rhitmo pedem assinatura. Cancele quando quiser.
             </>
           ) : (
             <>

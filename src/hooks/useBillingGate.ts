@@ -10,11 +10,11 @@ export type GateAction =
   | 'ask_rhitmo';
 
 const MESSAGES: Record<GateAction, string> = {
-  create_member: 'O teste de 14 dias terminou. Assine os assentos para adicionar liderados.',
-  send_bot: 'O teste de 14 dias terminou. Assine para continuar enviando o bot às reuniões.',
+  create_member: 'Assinatura necessária. Assine os assentos para adicionar liderados.',
+  send_bot: 'Assinatura necessária. Assine para continuar enviando o bot às reuniões.',
   generate_review:
-    'O teste de 14 dias terminou. Assine para gerar rascunhos de avaliação com evidências.',
-  ask_rhitmo: 'O teste de 14 dias terminou. Assine para continuar perguntando à Rhitmo.',
+    'Assinatura necessária. Assine para gerar rascunhos de avaliação com evidências.',
+  ask_rhitmo: 'Assinatura necessária. Assine para continuar perguntando à Rhitmo.',
 };
 
 /**
@@ -28,18 +28,19 @@ export const useBillingGate = () => {
 
   const locked = !!billing?.locked;
 
+  const neverTrial = !billing?.trialEndsAt;
   const ensure = useCallback(
     (action: GateAction) => {
       if (!locked) return true;
       toast({
         title: 'Assinatura necessária',
-        description: MESSAGES[action],
+        description: neverTrial ? MESSAGES[action].replace('Assinatura necessária. ', 'Escolha um plano mensal ou anual. ') : MESSAGES[action],
         variant: 'destructive',
       });
       navigate('/v2/billing');
       return false;
     },
-    [locked, navigate, toast],
+    [locked, navigate, toast, neverTrial],
   );
 
   return { locked, ensure, billing };

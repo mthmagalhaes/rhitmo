@@ -144,12 +144,13 @@ export default function V2Billing() {
           <AlertTitle>
             {billing.trialActive
               ? `Teste gratuito · ${billing.daysLeft} ${billing.daysLeft === 1 ? 'dia restante' : 'dias restantes'}`
-              : 'Teste encerrado'}
+              : billing.trialEndsAt ? 'Teste encerrado' : 'Escolha seu plano'}
           </AlertTitle>
           <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span>
               {billing.trialActive
                 ? 'Tudo liberado durante o teste, sem cartão. Assine quando quiser para não perder o ritmo.'
+                          : !billing.trialEndsAt ? 'Mensal ou anual, cancele quando quiser. Depois de assinar, tudo fica liberado na hora.'
                 : 'A leitura continua liberada, mas criar liderado, enviar o bot, gerar avaliação e perguntar à Rhitmo pedem assinatura.'}
             </span>
             <Button
