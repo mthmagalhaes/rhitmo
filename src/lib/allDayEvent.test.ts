@@ -1,3 +1,4 @@
+// @ts-nocheck — run with: bun test ./src/lib/allDayEvent.test.ts
 import { describe, expect, test } from "bun:test";
 import { isAllDayEvent } from "../../supabase/functions/fetch-calendar-events/allDay";
 
