@@ -1,0 +1,1 @@
+ALTER TABLE public.workspaces ALTER COLUMN trial_ends_at DROP DEFAULT;

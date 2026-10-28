@@ -48,47 +48,17 @@ const TermsOfService = () => {
         <h2 className="text-2xl font-semibold mt-8 mb-4">3. Planos e Pagamentos</h2>
 
         <h3 className="text-xl font-medium mt-6 mb-3">3.1 Planos Disponíveis</h3>
-
-        <p><strong>Pulse (Gratuito):</strong></p>
         <ul className="list-disc ml-6 space-y-2">
-          <li>Acesso ao Meu Rhitmo (portal do liderado)</li>
-          <li>1 avaliação com IA por mês</li>
-          <li>Rhitmo limitada (20 mensagens/mês)</li>
-          <li>Notas e anotações ilimitadas</li>
-        </ul>
-
-        <p className="mt-4"><strong>Pro:</strong></p>
-        <ul className="list-disc ml-6 space-y-2">
-          <li>Trimestral: R$ 267 (equivalente a R$ 89/mês)</li>
-          <li>Semestral: R$ 504 (equivalente a R$ 84/mês)</li>
-          <li>Anual: R$ 948 (equivalente a R$ 79/mês)</li>
-          <li>Liderados ilimitados</li>
-          <li>30 horas/mês de transcrição automatizada (Recall.ai + upload manual)</li>
-          <li>Avaliações com IA ilimitadas</li>
-          <li>Pre-meeting Briefs com contexto histórico</li>
-          <li>Detecção de viés em tempo real</li>
-          <li>Rhitmo ilimitada</li>
-          <li>Acesso ao Meu Rhitmo para todo o time</li>
-          <li>Analytics completo</li>
-          <li>Times ilimitados</li>
-        </ul>
-
-        <p className="mt-4"><strong>Enterprise / Corporate (sob consulta):</strong></p>
-        <ul className="list-disc ml-6 space-y-2">
-          <li>Tudo do Pro, para a organização inteira</li>
-          <li>HR Dashboard (Radar de Risco / Heatmap)</li>
-          <li>Dossiê de Blindagem Jurídica</li>
-          <li>Integração com HRIS</li>
-          <li>SSO (Single Sign-On)</li>
-          <li>CSM dedicado e SLA garantido</li>
-          <li>Cobrança exclusivamente anual</li>
+          <li>Assento por pessoa: R$ 10/mês no ciclo mensal ou R$ 96/ano no ciclo anual.</li>
+          <li>Add-on de bot do líder: R$ 29,90/mês (6 horas por ciclo) ou R$ 287,04/ano.</li>
+          <li>Enterprise / Corporate: sob consulta.</li>
         </ul>
 
         <h3 className="text-xl font-medium mt-6 mb-3">3.2 Período de Teste</h3>
-        <p>O plano Pro oferece 14 dias de teste gratuito apenas no ciclo trimestral para novos usuários. Após o período de teste, o cartão de crédito cadastrado será cobrado automaticamente, a menos que a assinatura seja cancelada antes do término do trial.</p>
+        <p>A assinatura é paga desde o início, nos ciclos mensal ou anual. Não há período de teste gratuito. Contas que já tinham um teste ativo mantêm esse teste até a data de término, e condições comerciais especiais já acordadas continuam valendo.</p>
 
-        <h3 className="text-xl font-medium mt-6 mb-3">3.3 Cobrança e Renovação</h3>
-        <p>Não oferecemos plano mensal. As assinaturas Pro são cobradas em ciclos de 3, 6 ou 12 meses, de forma recorrente. O valor é debitado automaticamente no início de cada ciclo. A escolha de ciclos mais longos reflete o tempo necessário para que mudanças de comportamento de liderança se consolidem (mínimo de 90 dias). Você é responsável por manter seus dados de pagamento atualizados.</p>
+        <h3 className="text-xl font-medium mt-6 mb-3">3.3 Cobrança, Renovação e Cancelamento</h3>
+        <p>A cobrança é recorrente e automática no início de cada ciclo (mensal ou anual). O plano mensal não tem fidelidade. Você pode cancelar a qualquer momento pelo portal de cobrança; o acesso continua até o fim do período já pago e não há nova cobrança depois disso. Você é responsável por manter seus dados de pagamento atualizados.</p>
 
         <h3 className="text-xl font-medium mt-6 mb-3">3.4 Impostos</h3>
         <p>Os preços exibidos não incluem impostos aplicáveis. Você é responsável pelo pagamento de quaisquer tributos relacionados ao uso do Serviço.</p>

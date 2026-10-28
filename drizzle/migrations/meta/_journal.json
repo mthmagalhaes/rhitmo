@@ -50,6 +50,13 @@
       "when": 1792601693940,
       "tag": "0006_review_signal_items",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793193243067,
+      "tag": "0007_migration",
+      "breakpoints": true
     }
   ]
 }

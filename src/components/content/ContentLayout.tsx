@@ -4,7 +4,9 @@ import { Menu } from 'lucide-react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
-export const TRIAL_URL = '/auth/start?utm_source=content&utm_medium=organic';
+export const SIGNUP_URL = '/auth/start?utm_source=content&utm_medium=organic';
+/** @deprecated use SIGNUP_URL */
+export const TRIAL_URL = SIGNUP_URL;
 
 const NAV: { label: string; to: string }[] = [
   { label: 'Como funciona', to: '/#como-funciona' },
@@ -28,7 +30,7 @@ export function ContentLayout({ children }: { children: ReactNode }) {
             <div className="mx-2 h-5 w-px bg-slate-200" />
             <Link to="/auth" className={link}>Entrar</Link>
             <Link to={TRIAL_URL} className="ml-2 inline-flex items-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800">
-              Começar teste grátis
+              Assinar agora
             </Link>
           </nav>
           <Sheet>
@@ -43,7 +45,7 @@ export function ContentLayout({ children }: { children: ReactNode }) {
                 <div className="my-2 h-px bg-slate-100" />
                 <SheetClose asChild><Link to="/auth" className="rounded-lg px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50">Entrar</Link></SheetClose>
                 <SheetClose asChild>
-                  <Link to={TRIAL_URL} className="mt-2 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white">Começar teste grátis</Link>
+                  <Link to={TRIAL_URL} className="mt-2 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white">Assinar agora</Link>
                 </SheetClose>
               </nav>
             </SheetContent>
@@ -84,8 +86,8 @@ export function ContentLayout({ children }: { children: ReactNode }) {
   );
 }
 
-/** Bloco de convite para o teste, usado no fim das páginas. */
-export function TrialCta({ title, body }: { title?: string; body?: string }) {
+/** Bloco de convite para assinar, usado no fim das páginas. */
+export function SignupCta({ title, body }: { title?: string; body?: string }) {
   return (
     <section className="rounded-[32px] bg-slate-900 p-8 text-white shadow-[0_8px_40px_-12px_rgba(0,0,0,0.25)] md:p-10">
       <h2 className="font-serif text-2xl font-bold tracking-tight md:text-3xl">
@@ -95,8 +97,11 @@ export function TrialCta({ title, body }: { title?: string; body?: string }) {
         {body ?? 'A Rhitmo importa as notas das suas 1:1s, organiza por pessoa e prepara pauta e rascunho de avaliação com a fonte de cada frase.'}
       </p>
       <Link to={TRIAL_URL} className="mt-6 inline-flex items-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100">
-        Testar 14 dias grátis, sem cartão
+        Assinar agora, cancele quando quiser
       </Link>
     </section>
   );
 }
+
+/** @deprecated use SignupCta */
+export const TrialCta = SignupCta;
