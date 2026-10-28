@@ -53,7 +53,7 @@ const translations = {
   pt: {
     // Header
     signIn: "Entrar",
-    getStarted: "Começar teste grátis",
+    getStarted: "Assinar agora",
     toggleTheme: "Alternar tema",
     // Hero
     heroTitle: "Sua liderança já tem um histórico. A Rhitmo transforma ele em decisões.",
@@ -122,7 +122,7 @@ const translations = {
       { feature: "Mentor IA conversacional no fluxo de trabalho", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
       { feature: "Transcreve e analisa 1:1s automaticamente", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
       { feature: "Funciona em 5 min, sem demo call, sem implantação", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
-      { feature: "Teste completo de 14 dias, sem cartão", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Mensal sem fidelidade, cancele quando quiser", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
     ],
     compLegend: "✅ Completo · ~ Parcial · ❌ Não possui",
     // Numbers
@@ -160,7 +160,7 @@ const translations = {
     hrP2: "Ciclos de avaliação e calibração ficam apoiados na mesma base de evidência. Registro de acessos, prazo de guarda e exportação ficam na área de Governança.",
     // Pricing
     pricingTitle: "Simples. Transparente.",
-    pricingSubtitle: "Um preço por pessoa, mensal ou anual. Teste 14 dias sem cartão.",
+    pricingSubtitle: "Um preço por pessoa, mensal ou anual. Cancele quando quiser.",
     pricingTooltip: "Todo assento custa R$ 10/mês (R$ 8 no anual), líder incluído. O bot de reunião é um add-on opcional do líder.",
     cycleQuarterly: "Trimestral",
     cycleSemiannual: "Semestral",
@@ -187,8 +187,8 @@ const translations = {
     footerPrivacy: "Política de Privacidade",
     launchBadge: "Preço de Lançamento",
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
-    pricingAnchor: "14 dias de teste, sem cartão. Escale quando fizer sentido.",
-    pricingTrustLine: "Sem cartão de crédito para começar · Cancele quando quiser · Preço de lançamento garantido enquanto sua assinatura estiver ativa",
+    pricingAnchor: "Mensal ou anual, sem fidelidade. Escale quando fizer sentido.",
+    pricingTrustLine: "Sem fidelidade no mensal · Cancele quando quiser · Preço de lançamento garantido enquanto sua assinatura estiver ativa",
     enterpriseFloor: "A partir de 50 colaboradores · mínimo R$ 750/mês",
     newBadge: "Novo",
     // Enterprise / Corporate
@@ -265,7 +265,7 @@ const translations = {
   },
   en: {
     signIn: "Sign in",
-    getStarted: "Get started free",
+    getStarted: "Subscribe now",
     toggleTheme: "Toggle theme",
     heroTitle: "Your leadership already has a track record. Rhitmo turns it into decisions.",
     heroSubtitle: "Rhitmo starts from the conversations your team already has. It keeps who works with whom, gathers day-to-day evidence, surfaces the patterns that repeat, and hands back 1:1 agendas, review drafts and risk signals with the source always in sight.",
@@ -332,7 +332,7 @@ const translations = {
       { feature: "Conversational AI Mentor in the workflow", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
       { feature: "Transcribes and analyzes 1:1s automatically", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
       { feature: "Works in 5 min, no demo call, no deployment", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
-      { feature: "Full 14-day trial, no credit card", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Monthly with no lock-in, cancel anytime", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
     ],
     compLegend: "✅ Complete · ~ Partial · ❌ Not available",
     // Numbers
@@ -366,7 +366,7 @@ const translations = {
     hrP1: "Conversation cadence per team, 1:1 coverage, cross-team collaboration and attention signals that grow slowly. HR follows leadership health without reading anyone's notes.",
     hrP2: "Review and calibration cycles rest on the same evidence base. Access logs, retention periods and exports live in the Governance area.",
     pricingTitle: "Simple. Transparent.",
-    pricingSubtitle: "One price per seat, monthly or annual. 14-day trial, no card.",
+    pricingSubtitle: "One price per seat, monthly or annual. Cancel anytime.",
     pricingTooltip: "Every seat is R$ 10/month (R$ 8 annually), leader included. The meeting bot is an optional leader add-on.",
     cycleQuarterly: "Quarterly",
     cycleSemiannual: "Semiannual",
@@ -390,7 +390,7 @@ const translations = {
     footerPrivacy: "Privacy Policy",
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
-    pricingAnchor: "14-day trial, no card. Scale when it makes sense.",
+    pricingAnchor: "Monthly or annual, no lock-in. Scale when it makes sense.",
     pricingTrustLine: "No credit card to start · Cancel anytime · Launch price guaranteed while your subscription is active",
     enterpriseFloor: "Starting at 50 employees · minimum R$ 750/month",
     newBadge: "New",
@@ -706,7 +706,7 @@ const HRRiskMockup = () => (
 );
 
 // ============== PRICING SECTION (v3 — todo assento pago) ==============
-// Pricing v3 — 09/2026: 1 plano único, teste de 14 dias sem cartão.
+// Pricing v3 — 09/2026: 1 plano único, assinatura paga desde o início (sem teste).
 // Todo assento custa R$ 10/mês (R$ 8 no anual), líder incluído.
 // Bot de reunião é add-on do LÍDER: R$ 29,90/mês, com 6h por ciclo.
 
@@ -752,7 +752,7 @@ const PricingSection = ({
       ? [
           { title: 'Mentor AI ilimitado', desc: 'Seu Chief of Staff conversacional, 24/7, com memória do time.' },
           { title: '1:1s', desc: 'Brief automático antes, pauta gerada a partir do contexto histórico com a pessoa liderada.' },
-          { title: 'Transcrição de reunião automática', desc: 'Três caminhos: add-on de bot do líder por R$ 29,90/mês (6h por ciclo), o teste de 14 dias com tudo liberado, ou conecte seu próprio note taker (Granola, Fireflies) sem custo adicional.' },
+          { title: 'Transcrição de reunião automática', desc: 'Dois caminhos: add-on de bot do líder por R$ 29,90/mês (6h por ciclo) ou conecte seu próprio note taker (Granola, Fireflies) sem custo adicional.' },
           { title: 'Slack', desc: 'Tenha Rhitmo conectado com seu Slack para lembretes, briefs e chat onde você já passa maior parte do tempo.' },
           { title: 'Detecção de viés nas evidências e avaliações de desempenho', desc: 'Identifique e aprenda a corrigir eventuais vieses e injustiças que você pode estar comentendo' },
           
@@ -760,7 +760,7 @@ const PricingSection = ({
       : [
           { title: 'Unlimited Mentor AI', desc: 'Your conversational Chief of Staff, 24/7, with team memory.' },
           { title: '1:1s', desc: 'Automatic brief beforehand, agenda built from your history with each report.' },
-          { title: 'Automatic meeting transcription', desc: 'Three paths: the leader bot add-on at R$ 29.90/month (6 hours per cycle), the 14-day trial with everything unlocked, or connect your own note taker (Granola, Fireflies) at no extra cost.' },
+          { title: 'Automatic meeting transcription', desc: 'Two paths: the leader bot add-on at R$ 29.90/month (6 hours per cycle) or connect your own note taker (Granola, Fireflies) at no extra cost.' },
           { title: 'Slack', desc: 'Rhitmo connected to your Slack for reminders, briefs and chat where you already spend most of your time.' },
           { title: 'Bias detection in evidence and performance reviews', desc: 'Spot and learn to fix biases and unfairness you may be introducing.' },
           
@@ -824,10 +824,10 @@ const PricingSection = ({
         <div className="bg-card rounded-[40px] border border-border/40 shadow-sm p-8 md:p-12">
           <div className="flex flex-col items-start gap-2 mb-8">
             <div className="inline-flex items-center rounded-full bg-primary/10 px-6 py-2.5 text-xl md:text-2xl font-semibold text-primary">
-              {lang === 'pt' ? '14 dias de teste, sem cartão' : '14-day trial, no credit card'}
+              {lang === 'pt' ? 'Mensal ou anual, cancele quando quiser' : 'Monthly or annual, cancel anytime'}
             </div>
             <p className="text-sm text-muted-foreground pl-1">
-              {lang === 'pt' ? 'Tudo liberado durante o teste. Depois, todo assento é pago.' : 'Everything unlocked during the trial. After that, every seat is paid.'}
+              {lang === 'pt' ? 'Assine e tudo fica liberado na hora. Sem fidelidade no mensal.' : 'Subscribe and everything unlocks right away. No lock-in on monthly.'}
             </p>
           </div>
           <div className="flex items-baseline gap-2 flex-wrap">
@@ -858,7 +858,7 @@ const PricingSection = ({
             className="w-full min-h-[52px] mt-8 rounded-full text-base bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => navigate('/auth/start')}
           >
-            {lang === 'pt' ? 'Começar teste de 14 dias' : 'Start 14-day trial'}
+            {lang === 'pt' ? 'Assinar agora' : 'Subscribe now'}
           </Button>
           {/* Features list */}
           <div className="border-t border-border/50 mt-10 pt-8">
@@ -1154,7 +1154,7 @@ const Landing = () => {
               </a>
             </div>
             <p className="text-xs text-slate-500 pt-2">
-              {lang === 'pt' ? 'Sem cartão de crédito para começar. Cancele quando quiser.' : 'No credit card to start. Cancel anytime.'}
+              {lang === 'pt' ? 'Mensal ou anual. Cancele quando quiser.' : 'Monthly or annual. Cancel anytime.'}
             </p>
           </div>
 
