@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBillingStatus } from '@/hooks/useBillingStatus';
 import { useLeaderBotAddon, type LeaderBotAddon } from '@/hooks/useLeaderBotAddon';
 import { cn } from '@/lib/utils';
+import { capture } from '@/lib/productAnalytics';
 
 /**
  * Assinatura v3: todo assento custa R$ 10/mês (R$ 8 no anual), líder incluído.
@@ -79,6 +80,8 @@ export default function V2Billing() {
 
   const handleCheckout = async (withAddon = false) => {
     setCheckoutLoading(true);
+    capture('plan_selected', { billing_cycle: 'monthly', with_addon: withAddon });
+    capture('checkout_started', { billing_cycle: 'monthly', with_addon: withAddon, seat_count: seats });
     try {
       const { data: session, error } = await supabase.functions.invoke('create-checkout-session', {
         // Legacy workspaces: let the server apply its free-seat rule instead of quoting v3 seats.
