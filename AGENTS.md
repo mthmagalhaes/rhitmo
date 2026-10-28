@@ -8,3 +8,4 @@
 - Culture-guided review signal cards (Slack/ONA) live only in `review_signal_items`, never on `performance_reviews`; assembly includes only accepted/edited cards — why: members must not see raw signals and an empty signal set keeps the prompt unchanged.
 - Product analytics events go only through `src/lib/productAnalytics.ts` (PostHog, no autocapture/recording, IDs and roles only — never note, review or transcript content) — why: one privacy-safe choke point for telemetry.
 - Public integration pages read cards from `connectorsCatalog.ts` and only editorial copy from `src/content/integracoes.ts`; blog posts live in `src/content/blog.ts` — why: one catalog for app and site, content without a CMS.
+- New v3 workspaces get no automatic trial (trial_ends_at has no default); paywall is `get_billing_status.locked` enforced via `useBillingGate` — why: one place decides paid access while legacy trials/grandfathered stay untouched.
