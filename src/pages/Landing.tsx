@@ -391,7 +391,7 @@ const translations = {
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
     pricingAnchor: "Monthly or annual, no lock-in. Scale when it makes sense.",
-    pricingTrustLine: "No credit card to start · Cancel anytime · Launch price guaranteed while your subscription is active",
+    pricingTrustLine: "No lock-in on monthly · Cancel anytime · Launch price guaranteed while your subscription is active",
     enterpriseFloor: "Starting at 50 employees · minimum R$ 750/month",
     newBadge: "New",
     enterpriseNav: "Enterprise",
