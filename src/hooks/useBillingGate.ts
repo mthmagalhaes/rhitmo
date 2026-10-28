@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useBillingStatus } from './useBillingStatus';
+import { gateMessagePrefix } from '@/lib/billingRules';
 
 export type GateAction =
   | 'create_member'
@@ -34,7 +35,7 @@ export const useBillingGate = () => {
       if (!locked) return true;
       toast({
         title: 'Assinatura necessária',
-        description: neverTrial ? MESSAGES[action].replace('Assinatura necessária. ', 'Escolha um plano mensal ou anual. ') : MESSAGES[action],
+        description: MESSAGES[action].replace('Assinatura necessária.', gateMessagePrefix({ locked, trialEndsAt: neverTrial ? null : 'x' })),
         variant: 'destructive',
       });
       navigate('/v2/billing');

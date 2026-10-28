@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
       "line_items[0][quantity]": String(seatsToPay),
       allow_promotion_codes: "true",
       success_url: "https://rhitmo.co/billing?success=true",
-      cancel_url: "https://rhitmo.co/billing",
+      cancel_url: "https://rhitmo.co/billing?canceled=true",
       "metadata[workspace_id]": workspace.id,
       "metadata[seat_cycle]": seatCycle,
       "metadata[paid_seats]": String(seatsToPay),

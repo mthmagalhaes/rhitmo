@@ -160,7 +160,7 @@ const translations = {
     hrP2: "Ciclos de avaliação e calibração ficam apoiados na mesma base de evidência. Registro de acessos, prazo de guarda e exportação ficam na área de Governança.",
     // Pricing
     pricingTitle: "Simples. Transparente.",
-    pricingSubtitle: "Um preço por pessoa, mensal ou anual. Cancele quando quiser.",
+    pricingSubtitle: "Um preço por pessoa, mensal ou anual. Cancele quando quiser. Garantia de 7 dias.",
     pricingTooltip: "Todo assento custa R$ 10/mês (R$ 8 no anual), líder incluído. O bot de reunião é um add-on opcional do líder.",
     cycleQuarterly: "Trimestral",
     cycleSemiannual: "Semestral",
@@ -188,7 +188,7 @@ const translations = {
     launchBadge: "Preço de Lançamento",
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
     pricingAnchor: "Mensal ou anual, sem fidelidade. Escale quando fizer sentido.",
-    pricingTrustLine: "Sem fidelidade no mensal · Cancele quando quiser · Preço de lançamento garantido enquanto sua assinatura estiver ativa",
+    pricingTrustLine: "Garantia de 7 dias · Sem fidelidade no mensal · Cancele quando quiser · Preço de lançamento garantido enquanto sua assinatura estiver ativa",
     enterpriseFloor: "A partir de 50 colaboradores · mínimo R$ 750/mês",
     newBadge: "Novo",
     // Enterprise / Corporate

@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { PageviewTracker } from "@/lib/productAnalytics";
+import CheckoutReturn from "@/components/billing/CheckoutReturn";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AccountProvider } from "./contexts/AccountContext";
@@ -201,7 +202,7 @@ const App = () => (
               <Route path="/member/:id" element={Leader(<MemberDetails />)} />
               {/* Legacy deep-links → redirect to new host pages with tab pre-selected */}
               <Route path="/analytics" element={<Navigate to="/lider/pessoas?tab=analytics" replace />} />
-              <Route path="/billing" element={<Navigate to="/lider/configuracoes?tab=faturamento" replace />} />
+              <Route path="/billing" element={<CheckoutReturn />} />
 
               <Route path="/evidence" element={<Navigate to="/lider/diario" replace />} />
               <Route path="/slack/channels" element={Leader(<SlackChannels />)} />

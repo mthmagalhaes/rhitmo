@@ -69,7 +69,8 @@ const TermsOfService = () => {
         <p>Você pode cancelar sua assinatura a qualquer momento através da página de Assinatura dentro da plataforma. O cancelamento terá efeito ao final do ciclo de cobrança atual, e você manterá acesso aos recursos do plano contratado até essa data.</p>
 
         <h3 className="text-xl font-medium mt-6 mb-3">4.2 Política de Reembolso</h3>
-        <p>Não oferecemos reembolsos por períodos parciais de serviço. Se você cancelar durante um ciclo de cobrança, continuará tendo acesso até o final do período já pago.</p>
+        <p>Garantia de 7 dias: se a Rhitmo não fizer sentido, solicite o cancelamento em até 7 dias corridos após o primeiro pagamento da assinatura (mensal ou anual) e devolvemos 100% do valor, sem perguntas. Basta escrever para support@rhitmo.co. A garantia vale uma vez por empresa, na primeira assinatura.</p>
+        <p>Após esse prazo, não há reembolso de períodos parciais. Se você cancelar durante um ciclo de cobrança, continuará tendo acesso até o final do período já pago.</p>
 
         <h3 className="text-xl font-medium mt-6 mb-3">4.3 Mudança de Ciclo</h3>
         <p>Você pode alternar entre os ciclos Trimestral, Semestral e Anual a qualquer momento. As mudanças aplicam proratação automática conforme o tempo restante do ciclo atual.</p>
