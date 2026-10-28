@@ -1,3 +1,4 @@
+// @ts-nocheck — run with: bun test ./src/lib/billingRules.test.ts
 import { describe, expect, test } from 'bun:test';
 import { canPerformAction, gateMessagePrefix, isWithinRefundWindow, checkoutReturnEvent, REFUND_GUARANTEE_DAYS } from './billingRules';
 
