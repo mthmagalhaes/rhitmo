@@ -134,3 +134,14 @@ export function getHomeRoute(opts: PersonaOpts): string {
   if (persona === 'hr_admin') return HR_ADMIN_HOME;
   return LEADER_HOME;
 }
+
+/**
+ * Modo implícito pela rota. `/liderado` começa com `/lider`, por isso é
+ * checado primeiro. Retorna null para rotas neutras.
+ */
+export function modeFromPath(path: string): ActiveMode | null {
+  if (path === '/liderado' || path.startsWith('/liderado/')) return 'member';
+  if (path === '/hr' || path.startsWith('/hr/')) return 'company';
+  if (path === '/lider' || path.startsWith('/lider/')) return 'leader';
+  return null;
+}

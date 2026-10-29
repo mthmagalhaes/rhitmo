@@ -19,6 +19,7 @@ import {
   LEADER_HOME,
 
   resolvePersona,
+  modeFromPath,
 } from '@/lib/navigation';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -81,15 +82,9 @@ export function AppSidebar() {
   // usuário para /lider/inicio.
   useEffect(() => {
     if (!availableModes || availableModes.length < 2) return;
-    const path = location.pathname;
-    const isMemberRoute = path === '/liderado' || path.startsWith('/liderado/');
-    const isLeaderRoute = !isMemberRoute && (path === '/lider' || path.startsWith('/lider/'));
-    if (path.startsWith('/hr') && activeMode !== 'company' && availableModes.includes('company')) {
-      setMode('company');
-    } else if (isMemberRoute && activeMode !== 'member' && availableModes.includes('member')) {
-      setMode('member');
-    } else if (isLeaderRoute && activeMode !== 'leader' && availableModes.includes('leader')) {
-      setMode('leader');
+    const routeMode = modeFromPath(location.pathname);
+    if (routeMode && activeMode !== routeMode && availableModes.includes(routeMode)) {
+      setMode(routeMode);
     }
   }, [location.pathname, activeMode, availableModes, setMode]);
 
