@@ -1,8 +1,9 @@
+import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAccount } from '@/contexts/AccountContext';
 import { useActiveMode } from '@/hooks/useActiveMode';
-import { resolvePersona, getHomeRoute } from '@/lib/navigation';
+import { resolvePersona, getHomeRoute, modeFromPath } from '@/lib/navigation';
 
 interface Props {
   /** Which persona the route tree is intended for. */
@@ -23,8 +24,18 @@ interface Props {
  */
 export function RoleRouteGuard({ expects, children }: Props) {
   const { loading, isLeader, isHRAdmin, isLinkedMember, isWorkspaceOwner, isTeamLeader } = useAccount();
-  const { mode: activeMode } = useActiveMode();
+  const { mode: storedMode, setMode, availableModes } = useActiveMode();
   const location = useLocation();
+
+  // A rota é a fonte da verdade: se a URL indica um modo permitido, usamos
+  // ele (e persistimos) em vez de redirecionar pelo modo antigo salvo.
+  const routeMode = modeFromPath(location.pathname);
+  const routeModeAllowed = !!routeMode && availableModes.length > 1 && availableModes.includes(routeMode);
+  const activeMode = routeModeAllowed ? routeMode! : storedMode;
+
+  useEffect(() => {
+    if (!loading && routeModeAllowed && storedMode !== routeMode) setMode(routeMode!);
+  }, [loading, routeModeAllowed, routeMode, storedMode, setMode]);
 
   if (loading) {
     return (
