@@ -1,3 +1,4 @@
+// @ts-nocheck — run with: bun test ./src/lib/navigation.test.ts
 import { describe, expect, test } from 'bun:test';
 import { modeFromPath, resolvePersona } from './navigation';
 
