@@ -19,6 +19,7 @@ import {
   LEADER_HOME,
 
   resolvePersona,
+  modeFromPath,
 } from '@/lib/navigation';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
