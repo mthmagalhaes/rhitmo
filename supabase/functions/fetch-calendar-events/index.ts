@@ -309,6 +309,12 @@ Deno.serve(async (req) => {
       // Eventos de dia inteiro (lembretes, feriados) não são reuniões: ignora.
       if (isAllDayEvent(startObj)) {
         eventsSkippedAllDay++;
+        // Remove linhas antigas salvas antes deste filtro existir.
+        await supabaseAdmin
+          .from("upcoming_meetings")
+          .delete()
+          .eq("user_id", userId)
+          .eq("google_event_id", event.id as string);
         continue;
       }
 

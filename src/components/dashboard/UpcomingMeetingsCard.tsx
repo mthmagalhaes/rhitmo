@@ -603,7 +603,7 @@ export const UpcomingMeetingsCard = () => {
       </div>
 
       <p className="mt-3 px-1 text-[11px] text-muted-foreground">
-        {upcomingMeetings.some((m) => m.meeting_type === 'team') && 'Reuniões de equipe precisam ser ativadas uma a uma. '}
+        {upcomingMeetings.some((m) => m.meeting_type === 'team') && 'Reuniões de equipe: ative o bot em cada uma pela chave ao lado. '}
         Mostramos só reuniões com link de Meet, Zoom ou Teams.
       </p>
 
